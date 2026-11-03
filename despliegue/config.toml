@@ -1,0 +1,32 @@
+# /etc/controlador-radio/config.toml - se lee al arrancar el demonio (systemctl restart controlador-radio).
+# Toda clave es opcional; lo que falte o este mal escrito usa el valor por defecto de config.py.
+
+# "actuar" repara; "observar" solo diagnostica y registra (para estrenar cambios sin riesgo).
+modo = "actuar"
+nombre = "servidor"
+iface = "wlo1"
+conexion = "wifi-casa"
+pci = "0000:02:00.0"
+modulo = "rtw88_8821ce"
+puerta = "192.0.2.1"
+internet = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
+intervalo = 15.0
+confirmar = 2
+max_resets_hora = 4
+espera_ap = 60.0
+espera_router = 600.0
+# Respaldo: con el cable USB del celular con internet no se mueve nada (lo hace el ruteo); sin cable,
+# router ausente -> wifi del celular a los espera_celular segundos.
+respaldo = true
+celular = "wifi-celular"
+bt_celular = ""
+espera_celular = 180.0
+volver_casa = 120.0
+soltar_bt = 300.0
+# Bluetooth: se vigila con un comando HCI y se repara con encender -> rfkill -> religar btusb.
+bluetooth = true
+bt_hci = "hci0"
+bt_usb = "0bda:b00a"
+# authorized=0/1 y usbreset: solo despues de probar en este equipo que el adaptador vuelve.
+bt_usb_profundo = false
+bt_reponer = []

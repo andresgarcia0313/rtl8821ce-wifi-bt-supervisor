@@ -1,0 +1,12 @@
+name: calidad
+on: [push, pull_request]
+jobs:
+  calidad:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.15.14 mypy==2.1.0 pytest==9.0.3
+      - run: bash scripts/calidad.sh

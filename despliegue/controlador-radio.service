@@ -1,0 +1,44 @@
+[Unit]
+Description=Controlador de radio (wifi Realtek rtw88 y Bluetooth USB): diagnostica, repara y registra
+Documentation=file:///opt/controlador-radio/README.md
+After=NetworkManager.service bluetooth.service
+Wants=NetworkManager.service
+# Si falla 5 veces en 10 minutos queda en failed; los servicios de reserva toman el relevo solos
+# (su ExecCondition les deja actuar cuando este servicio no esta activo).
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStartPre=/usr/bin/python3 -I -c "import sys; sys.path.insert(0, '/opt/controlador-radio'); import radio_rtw88.demonio"
+ExecStart=/usr/local/bin/controlador-radio demonio
+# Latido por vuelta y por cada paso de recuperacion: si algo se cuelga de verdad, systemd lo reinicia
+WatchdogSec=300
+Restart=always
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+# Nunca puede cargar el equipo: memoria, CPU e hilos acotados
+MemoryMax=150M
+CPUQuota=30%
+TasksMax=64
+Nice=-5
+# Minimo privilegio compatible con su trabajo: root con solo las capacidades que usa (modprobe, /sys de
+# PCI y USB, red y rfkill, ping y HCI crudo, leer el kernel, terminar hijos colgados)
+CapabilityBoundingSet=CAP_SYS_MODULE CAP_SYS_ADMIN CAP_NET_ADMIN CAP_NET_RAW CAP_SYSLOG CAP_KILL CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
+ProtectSystem=true
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectClock=yes
+RestrictRealtime=yes
+LockPersonality=yes
+StateDirectory=controlador-radio
+StateDirectoryMode=0700
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+#!/usr/bin/python3 -I
+"""Lanzador del controlador de radio: Python aislado (-I), sin rutas del usuario ni del directorio actual."""
+
+import sys
+
+sys.path.insert(0, "/opt/controlador-radio")
+
+from radio_rtw88.__main__ import main  # noqa: E402
+
+sys.exit(main(sys.argv[1:]))

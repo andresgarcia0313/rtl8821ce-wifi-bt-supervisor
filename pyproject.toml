@@ -1,0 +1,26 @@
+[project]
+name = "rtl8821ce-wifi-bt-supervisor"
+version = "2.0.0"
+description = "Supervisor y recuperacion de la wifi Realtek RTL8821CE (rtw88) y su Bluetooth USB en Linux"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Andrés García" }]
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PL"]
+ignore = ["PLR2004", "PLR0911", "PLC0415", "RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+strict = true
+mypy_path = "src"
+packages = ["radio_rtw88"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
