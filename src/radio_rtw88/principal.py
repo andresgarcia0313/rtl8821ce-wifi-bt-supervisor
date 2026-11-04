@@ -8,6 +8,7 @@ import time
 
 from . import servicio, sondas
 from .acciones import reasociar
+from .ajustes import Ajustes
 from .config import Config
 from .diagnostico import SIN_TOCAR_HARDWARE, Estado, diagnosticar
 from .episodios import Episodios
@@ -37,6 +38,7 @@ class Controlador:
         self.vigia_bt = VigiaBt(s, cfg, self.episodios, self.escucha.silenciar_bt)
         self.respaldo = Respaldo(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("red", tipo, **d))
         self.vigia_cable = VigiaCable(s, lambda tipo, **d: self.episodios.bitacora.anotar("red", tipo, **d))
+        self.ajustes = Ajustes(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("radio", tipo, **d))
         self.despertar = threading.Event()
         self.ultimo_crash = self.ultimo_resumen = -1e9
         self.fallas = 0
@@ -106,6 +108,7 @@ class Controlador:
         """Bluetooth y cable: su falla nunca cuenta como vuelta fallida (no dispara el respaldo de wifi)."""
         seguro("vigia del bluetooth", self.vigia_bt.vigilar, lambda: None)
         seguro("vigia del cable", self.vigia_cable.vigilar, lambda: None)
+        seguro("ajustes del driver", self.ajustes.vigilar, list)
 
     def respaldo_minimo(self) -> str:
         """El except de una vuelta: si la wifi no cursa trafico, reasociar sin mas analisis."""

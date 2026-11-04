@@ -1,0 +1,4 @@
+# Bluetooth Realtek USB siempre encendido: la suspension automatica de btusb lo deja mudo a ratos.
+# Equivale en Windows a quitar "Permitir que el equipo apague este dispositivo". El controlador lo
+# revisa cada 5 minutos; esta regla lo deja puesto desde el arranque. Ajuste idVendor/idProduct al equipo.
+ACTION=="add|bind", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="0bda", ATTR{idProduct}=="b00a", TEST=="power/control", ATTR{power/control}="on"

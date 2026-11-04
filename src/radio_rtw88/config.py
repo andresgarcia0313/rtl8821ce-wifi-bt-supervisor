@@ -39,6 +39,7 @@ class Config:
     bt_usb: str = "0bda:b00a"  # vendedor:producto, para hallarlo en USB si el hci desaparece
     bt_usb_profundo: bool = False  # authorized=0/1 y usbreset: solo tras probar que el equipo vuelve
     bt_reponer: tuple[str, ...] = ()  # unidades a arrancar tras reparar el Bluetooth (NAP, visibilidad)
+    ajustes: bool = True  # vigilar ahorro de energia de la wifi y suspension USB del Bluetooth
 
 
 # Limites sanos: fuera de ellos el valor se ignora (p. ej. un intervalo >= WatchdogSec mataria al demonio)

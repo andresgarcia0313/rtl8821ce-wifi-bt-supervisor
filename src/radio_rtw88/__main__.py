@@ -2,6 +2,7 @@
 
 demonio            bucle de vigilancia (lo usa systemd)
 diagnostico        mide cada capa y dice la causa, sin tocar nada
+ajustes            opciones del driver al estilo Windows y su valor actual
 estado             contadores acumulados, ultima medida y estado del Bluetooth
 eventos [n]        ultimos n eventos de la bitacora (por que fallo, en que escenario, evidencia)
 evidencia          guarda ahora los registros completos de wifi y Bluetooth (para revisar a mano)
@@ -21,7 +22,7 @@ import sys
 import time
 from dataclasses import asdict, replace
 
-from . import acciones, bluetooth, cerrojo, demonio, evidencia, principal, sondas
+from . import acciones, ajustes, bluetooth, cerrojo, demonio, evidencia, principal, sondas
 from .config import cargar
 from .diagnostico import diagnosticar
 from .eventos import Bitacora
@@ -55,6 +56,9 @@ def main(args: list[str]) -> int:
     if orden == "diagnostico":
         m = sondas.medir(s, cfg)
         _imprimir(asdict(m) | {"causa": str(diagnosticar(m))})
+        return 0
+    if orden == "ajustes":
+        _imprimir(ajustes.leer_todos(s, cfg))
         return 0
     if orden == "estado":
         _imprimir(Registro(cfg.estado_dir).datos | {"bluetooth_responde": bluetooth.responde(s, cfg)})
