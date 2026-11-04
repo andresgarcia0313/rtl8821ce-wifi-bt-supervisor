@@ -47,7 +47,9 @@ El supervisor no reemplaza ningún driver: se apoya en el código libre que el e
 6. **Android apaga el anclaje si el puerto USB se reinicia.** La interfaz reaparece, pero ya no hay DHCP. El vigía del cable avisa una vez; solo se reactiva desde el celular.
 7. **Reparar el Bluetooth corta el canal de rescate unos segundos.** Por eso una sola lectura mala nunca dispara un remedio. El enlace vuelve en el siguiente ciclo del cliente, cada 5 min.
 8. **El patrón de las caídas de la wifi.** De 479 caídas en un mes, 442 empezaron con la tarjeta asociada y con IP, pero sin respuesta ni del router; en la lectura siguiente ya estaba desasociada: el enlace queda mudo y mac80211 lo suelta por balizas perdidas. Se concentran en la tarde y la noche (15 h, 19-20 h), cuando la red de la casa tiene más uso. El equipo estaba con cargador, así que el ahorro de energía no las explica. La mediana duró 78 s y 78 se curaron solas. Por eso cada evento guarda ahora los contadores de la estación (balizas perdidas, envíos fallidos, reintentos, señal): con ellos se podrá separar el radio del punto de acceso.
-9. **El journal guardaba menos de un día.** Un `size.conf` viejo (100 MB) se leía después del ajuste de 1 GB y 90 días y lo anulaba, porque los archivos de `journald.conf.d` se aplican en orden alfabético. En un nodo de k3s, 100 MB son unas horas.
+9. **El escaneo de fondo venía de un perfil que recuerda 3 puntos de acceso.** NetworkManager programa `bgscan simple:30:-65:300` si el perfil recuerda más de un BSSID (`seen-bssids`), aunque la red emita uno solo. Con el BSSID fijado no programa escaneo de fondo.
+10. **El Bluetooth se suspendía solo.** `btusb` deja el adaptador en `power/control=auto` y el kernel lo suspende tras 2 s sin uso, causa conocida de que el Bluetooth Realtek deje de responder.
+11. **El journal guardaba menos de un día.** Un `size.conf` viejo (100 MB) se leía después del ajuste de 1 GB y 90 días y lo anulaba, porque los archivos de `journald.conf.d` se aplican en orden alfabético. En un nodo de k3s, 100 MB son unas horas.
 
 ## La solución
 
@@ -63,7 +65,23 @@ Un servicio de systemd en Python 3.12+, solo con la biblioteca estándar, en esp
 | `proveedor` | nada sobre el hardware |
 | Bluetooth sin respuesta HCI (confirmado) | encender, rfkill, religar `btusb`; opcional: `authorized`, `usbreset` |
 
-Protecciones: tope de 4 acciones de hardware por hora guardado en disco; tras una falla del proveedor, 10 min solo reasociar; watchdog de systemd de 300 s; `MemoryMax=150M`, `CPUQuota=30%` y 8 capacidades; cada vuelta en try/except con un respaldo mínimo; cerrojo `flock`. Los supervisores anteriores quedan de reserva con `ExecCondition`: actúan solo si este no está activo o está en `observar`. No arma pánicos ni reinicios automáticos del equipo.
+**Manejo de errores en cada función.** Cada función que habla con el sistema lleva `@resiste(alternativa)`: si lanza, responde una alternativa útil para su propósito y nunca toca el hardware a ciegas (el chip se da por vivo, el Bluetooth "no se sabe", el enlace sale del `operstate`, un remedio cuenta como no logrado). Una prueba falla si alguna queda sin alternativa. El router se prueba por ping y por ARP, como el monitor de enlace de ChromeOS.
+
+**Opciones del driver al estilo de Windows** (`controlador-radio ajustes`):
+
+| Opción en Windows | En este controlador |
+|---|---|
+| Banda preferida / Sensibilidad de itinerancia | `fijar_bssid`: fija el único punto de acceso de la red y lo suelta si deja de verse |
+| Modo de ahorro de energía | ahorro de la wifi apagado y vigilado cada 5 min |
+| Permitir que el equipo apague el dispositivo (Bluetooth) | `power/control=on` vigilado cada 5 min y regla udev |
+| Coexistencia wifi y Bluetooth | integrada en rtw88, sin ajuste |
+| País (802.11d) | lo da la región del sistema (`iw reg get`) |
+| Encender por la red (WoWLAN) | no aplica a un servidor siempre encendido |
+| Deshabilitar y habilitar el adaptador | la escalera de remedios |
+
+**Errores frecuentes de otros que se evitan:** reiniciar la tarjeta ante cualquier falta de internet, vigilar con un solo destino, reparar en bucle, itinerancia agresiva, escaneos frecuentes, creer que los ajustes de energía lo curan todo, cortar el puerto USB del Bluetooth, restauraciones a ciegas y ping sin elegir la interfaz. Detalle en `docs/adr/0004-errores-por-funcion-ajustes-e-itinerancia.md`.
+
+Protecciones: tope de 4 acciones de hardware por hora guardado en disco; tras una falla del proveedor, 10 min solo reasociar; watchdog de systemd de 300 s; `MemoryMax=150M`, `CPUQuota=30%` y 8 capacidades; cada vuelta en try/except con un respaldo mínimo; cerrojo `flock`; aviso si systemd deja de reiniciarlo (`OnFailure`). Los supervisores anteriores quedan de reserva con `ExecCondition`: actúan solo si este no está activo o está en `observar`. No arma pánicos ni reinicios automáticos del equipo.
 
 **Registro para encontrar la causa.** `/var/lib/controlador-radio/eventos.jsonl`: una línea JSON por evento con causa, medida por capa (incluida la banda), escenario (carga, memoria, presión de disco, BSSID, frecuencia, salida a internet, cable, cargador, batería) y segundos. La evidencia queda en `eventos/<fecha>-<motivo>/` (kernel filtrado, NetworkManager, `phy_info` y `coex_info` de rtw88, PCI, Bluetooth, USB, volcados del firmware).
 
@@ -90,7 +108,7 @@ Protecciones: tope de 4 acciones de hardware por hora guardado en disco; tras un
 
 ## Instalar y adaptar
 
-Requisitos: Linux con NetworkManager, Python 3.12+, `iw`, BlueZ (`bluetoothctl`, `hcitool`). Todo como root.
+Requisitos: Linux con NetworkManager, Python 3.12+, `iw`, `arping` (iputils-arping), BlueZ (`bluetoothctl`, `hcitool`). Todo como root.
 
 1. Ajusta `despliegue/config.toml`: interfaz, perfil wifi, PCI, módulo, puerta de enlace, perfil wifi del celular, `bt_usb` (vendedor:producto) y `bt_reponer` (unidades que reponen tu NAP).
 2. Estrena en modo observar: `sudo RESERVA="guardian-viejo.service" bash despliegue/instalar.sh observar`. Revisa `journalctl -u controlador-radio -f` y `controlador-radio eventos`.
@@ -120,4 +138,5 @@ MIT. Ver `LICENSE`.
 
 | Versión | Fecha | Cambio |
 |---|---|---|
+| 2.1.0 | 2026-11-04 | Manejo de errores con alternativa en cada función, ARP al router, ajustes vigilados (ahorro de la wifi, suspensión del Bluetooth), itinerancia mínima con liberación automática, aviso `OnFailure` |
 | 2.0.0 | 2026-11-03 | Adaptado a rtw88 y Bluetooth Realtek USB: sonda del chip por MMIO, escalera del Bluetooth, respaldo por cable, vigía del cable, ajuste de TLP |

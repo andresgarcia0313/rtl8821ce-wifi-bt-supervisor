@@ -30,3 +30,8 @@ bt_usb = "0bda:b00a"
 # authorized=0/1 y usbreset: solo despues de probar en este equipo que el adaptador vuelve.
 bt_usb_profundo = false
 bt_reponer = []
+# Ajustes del driver vigilados cada 5 min: ahorro de energia de la wifi y suspension USB del Bluetooth.
+ajustes = true
+# Fijar el punto de acceso cuando la red tiene uno solo (sin escaneo de fondo); se suelta si deja de verse.
+# Aplicarlo reconecta la wifi unos segundos: solo ocurre con el cable de respaldo util.
+fijar_bssid = false
