@@ -102,7 +102,17 @@ Protecciones: tope de 4 acciones de hardware por hora guardado en disco; tras un
 | Internet: promedio / máximo / pérdida | 17,3 / 94,7 ms / 1,7 % | 15,7 / 36,4 ms / 0 % |
 | iperf3 en la red local, subida / bajada | 145 / 164 Mbit/s | 141 / 149 Mbit/s (igual, dentro del ruido) |
 
-**Intermitencia medida en hora pico (10 min, ping cada 0,2 s, sin cambiar nada):** router con 0,17 % de pérdida, p50 de 4,0 ms, p99 de 66 ms y máximo de 421 ms; internet con 1,1 % de pérdida, p50 de 13,5 ms y p99 de 70 ms. Cero balizas perdidas y ningún corte de más de 1,5 s; el Bluetooth respondió siempre en menos de 10 ms. Los picos más grandes (~450 ms) coinciden con el escaneo de fondo de wpa_supplicant (`bgscan simple:30:-65:300`, uno cada ~310 s): 12 de 31 picos de más de 50 ms. El resto es contención del aire en la red. Fijar el BSSID en el perfil apaga ese escaneo, pero no se aplicó: si el punto de acceso cambia, el servidor se queda sin wifi, y dos picos de medio segundo cada 5 minutos no lo justifican.
+**Intermitencia medida en hora pico (10 min, ping cada 0,2 s, sin cambiar nada):** router con 0,17 % de pérdida, p50 de 4,0 ms, p99 de 66 ms y máximo de 421 ms; internet con 1,1 % de pérdida, p50 de 13,5 ms y p99 de 70 ms. Cero balizas perdidas y ningún corte de más de 1,5 s; el Bluetooth respondió siempre en menos de 10 ms. Los picos más grandes (~450 ms) coinciden con el escaneo de fondo de wpa_supplicant (`bgscan simple:30:-65:300`, uno cada ~310 s): 12 de 31 picos de más de 50 ms. El resto es contención del aire en la red. El 2026-11-04 se aplicó la fijación con liberación automática (`fijar_bssid`, ver abajo).
+
+**Versión 2.1.0, antes y después (2026-11-04, 10 min cada medición, ping cada 0,2 s al router y cada 0,5 s a internet):**
+
+| | Antes | Después (punto de acceso fijado, Bluetooth sin suspensión, revisión cada 5 s) |
+|---|---|---|
+| Router: pérdida / p99 / máximo | 0,47 % / 69 ms / 777 ms | 0 % / 24 ms / 106 ms |
+| Internet: pérdida / p99 / máximo | 1,33 % / 133 ms / 871 ms | 0,75 % / 40 ms / 54 ms |
+| Escaneos de la tarjeta en 10 min | 1 | 0 |
+
+Fijar el punto de acceso reconectó la wifi una vez, durante 1,2 s, con el cable de respaldo puesto; los tres nodos del clúster siguieron `Ready`. Son dos muestras de 10 minutos y el aire de la casa varía con la hora, así que la mejora del máximo y del p99 es la señal fuerte y la pérdida a internet todavía tiene ruido.
 
 **Frente a lo que el equipo da en Windows:** 802.11ac a 5 GHz con 80 MHz y VHT MCS 9 (433 Mbit/s de enlace) se logra, y es el techo del hardware 1x1 (no tiene 160 MHz). La red de la casa solo emite esa SSID en 5 GHz, así que no hay salto entre bandas. Bluetooth 4.2 con LE funciona (roles central y periférico). A2DP es posible (PipeWire activo), pero está apagado a propósito: el Bluetooth del equipo es el canal de rescate, y el audio competiría con el NAP.
 
