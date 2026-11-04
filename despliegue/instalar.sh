@@ -35,7 +35,9 @@ base=despliegue/config.toml
 [[ -n "${EQUIPO:-}" && -f "despliegue/equipos/$EQUIPO.toml" ]] && base="despliegue/equipos/$EQUIPO.toml"
 [[ -f /etc/controlador-radio/config.toml ]] || install -m 0644 "$base" /etc/controlador-radio/config.toml
 sed -i "s/^modo = .*/modo = \"$MODO\"/" /etc/controlador-radio/config.toml
-install -m 0644 despliegue/controlador-radio.service /etc/systemd/system/
+install -m 0644 despliegue/controlador-radio.service despliegue/controlador-radio-caido.service /etc/systemd/system/
+install -m 0644 despliegue/81-bluetooth-sin-suspension.rules /etc/udev/rules.d/
+udevadm control --reload 2>/dev/null || true
 for unidad in ${RESERVA:-}; do
   install -D -m 0644 despliegue/reserva.conf "/etc/systemd/system/$unidad.d/reserva.conf"
   echo "$unidad" >> /etc/controlador-radio/reserva.lista

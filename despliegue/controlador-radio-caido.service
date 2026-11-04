@@ -1,0 +1,6 @@
+[Unit]
+Description=Aviso: systemd dejo de reiniciar el controlador de radio (quedan los servicios de reserva)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/controlador-radio avisar-caida

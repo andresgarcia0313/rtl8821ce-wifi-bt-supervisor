@@ -7,6 +7,8 @@ Wants=NetworkManager.service
 # (su ExecCondition les deja actuar cuando este servicio no esta activo).
 StartLimitIntervalSec=600
 StartLimitBurst=5
+# Cuando systemd se rinde, el aviso sale una vez (antes nadie se enteraba de que quedo caido)
+OnFailure=controlador-radio-caido.service
 
 [Service]
 Type=notify

@@ -5,7 +5,8 @@
 set -euo pipefail
 [[ $EUID -eq 0 ]] || { echo "requiere root" >&2; exit 1; }
 systemctl disable --now controlador-radio.service 2>/dev/null || true
-rm -f /etc/systemd/system/controlador-radio.service /usr/local/bin/controlador-radio
+rm -f /etc/systemd/system/controlador-radio.service /etc/systemd/system/controlador-radio-caido.service \
+  /etc/udev/rules.d/81-bluetooth-sin-suspension.rules /usr/local/bin/controlador-radio
 lista=/etc/controlador-radio/reserva.lista
 if [[ -f "$lista" ]]; then
   while read -r unidad; do

@@ -2,6 +2,7 @@
 
 demonio            bucle de vigilancia (lo usa systemd)
 diagnostico        mide cada capa y dice la causa, sin tocar nada
+avisar-caida       aviso critico de que systemd dejo de reiniciar el demonio (OnFailure)
 ajustes            opciones del driver al estilo Windows y su valor actual
 estado             contadores acumulados, ultima medida y estado del Bluetooth
 eventos [n]        ultimos n eventos de la bitacora (por que fallo, en que escenario, evidencia)
@@ -22,7 +23,7 @@ import sys
 import time
 from dataclasses import asdict, replace
 
-from . import acciones, ajustes, bluetooth, cerrojo, demonio, evidencia, principal, sondas
+from . import acciones, ajustes, bluetooth, cerrojo, demonio, evidencia, principal, servicio, sondas
 from .config import cargar
 from .diagnostico import diagnosticar
 from .eventos import Bitacora
@@ -56,6 +57,12 @@ def main(args: list[str]) -> int:
     if orden == "diagnostico":
         m = sondas.medir(s, cfg)
         _imprimir(asdict(m) | {"causa": str(diagnosticar(m))})
+        return 0
+    if orden == "avisar-caida":
+        servicio.configurar(cfg.nombre, cfg.aviso_env)
+        servicio.avisar(
+            "critical", "systemd dejo de reiniciar el controlador de radio; siguen los de reserva"
+        )
         return 0
     if orden == "ajustes":
         _imprimir(ajustes.leer_todos(s, cfg))
