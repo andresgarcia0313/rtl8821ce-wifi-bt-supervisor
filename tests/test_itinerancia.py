@@ -112,3 +112,25 @@ def test_apagado_por_defecto_no_toca_nada() -> None:
     it.vigilar(Estado.SANO)
     it.vigilar(Estado.DESASOCIADO)
     assert not s.ordeno("nmcli", "connection", "modify")
+
+
+def test_bssid_ilegible_no_reconecta_para_fijar(caso, monkeypatch: pytest.MonkeyPatch) -> None:
+    it, s, reloj, _, _ = caso
+    monkeypatch.setattr(it, "fijado", lambda: None)  # nmcli fallo: no se sabe si ya estaba fijado
+    sano(it, reloj, itinerancia.SANO_ANTES + 60)
+    assert not s.ordeno("nmcli", "connection", "up")
+
+
+def test_escaneo_ilegible_no_suelta_la_fijacion(caso, monkeypatch: pytest.MonkeyPatch) -> None:
+    it, s, _, _, _ = caso
+    s.fijado = CASA
+    monkeypatch.setattr(it, "visibles", lambda: None)
+    it.vigilar(Estado.DESASOCIADO)
+    assert s.fijado == CASA
+
+
+def test_soltar_quita_la_fijacion_sin_reconectar() -> None:
+    s = Red()
+    s.fijado = CASA
+    assert itinerancia.Itinerancia(s, Config()).soltar() and s.fijado == ""
+    assert not s.ordeno("nmcli", "connection", "up")

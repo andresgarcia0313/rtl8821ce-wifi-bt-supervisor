@@ -2,7 +2,9 @@
 
 demonio            bucle de vigilancia (lo usa systemd)
 diagnostico        mide cada capa y dice la causa, sin tocar nada
-avisar-caida       aviso critico de que systemd dejo de reiniciar el demonio (OnFailure)
+avisar-caida       aviso critico de que systemd dejo de reiniciar el demonio (OnFailure); suelta el
+                   punto de acceso fijado
+soltar-bssid       quita el punto de acceso fijado en el perfil (lo usa restaurar.sh)
 ajustes            opciones del driver al estilo Windows y su valor actual
 estado             contadores acumulados, ultima medida y estado del Bluetooth
 eventos [n]        ultimos n eventos de la bitacora (por que fallo, en que escenario, evidencia)
@@ -24,9 +26,10 @@ import time
 from dataclasses import asdict, replace
 
 from . import acciones, ajustes, bluetooth, cerrojo, demonio, evidencia, principal, servicio, sondas
-from .config import cargar
+from .config import Config, cargar
 from .diagnostico import diagnosticar
 from .eventos import Bitacora
+from .itinerancia import Itinerancia
 from .registro import Registro
 from .sistema import SistemaReal
 
@@ -47,6 +50,24 @@ def _imprimir(datos: object) -> None:
     print(json.dumps(datos, indent=1, ensure_ascii=False, sort_keys=True))
 
 
+def _mantenimiento(orden: str, s: SistemaReal, cfg: Config) -> int | None:
+    """Ordenes de systemd y de restaurar.sh, y la lista de ajustes; None si la orden no es de aqui."""
+    if orden == "avisar-caida":
+        if cfg.fijar_bssid:  # sin el demonio nadie soltaria el punto de acceso si el router cambia
+            Itinerancia(s, cfg).soltar()
+        servicio.configurar(cfg.nombre, cfg.aviso_env)
+        servicio.avisar(
+            "critical", "systemd dejo de reiniciar el controlador de radio; siguen los de reserva"
+        )
+        return 0
+    if orden == "soltar-bssid":
+        return 0 if Itinerancia(s, cfg).soltar() else 1
+    if orden == "ajustes":
+        _imprimir(ajustes.leer_todos(s, cfg))
+        return 0
+    return None
+
+
 def main(args: list[str]) -> int:
     os.umask(0o077)  # bitacora y evidencia tienen datos de la red: solo root las lee
     s, cfg = SistemaReal(), cargar()
@@ -58,15 +79,9 @@ def main(args: list[str]) -> int:
         m = sondas.medir(s, cfg)
         _imprimir(asdict(m) | {"causa": str(diagnosticar(m))})
         return 0
-    if orden == "avisar-caida":
-        servicio.configurar(cfg.nombre, cfg.aviso_env)
-        servicio.avisar(
-            "critical", "systemd dejo de reiniciar el controlador de radio; siguen los de reserva"
-        )
-        return 0
-    if orden == "ajustes":
-        _imprimir(ajustes.leer_todos(s, cfg))
-        return 0
+    hecho = _mantenimiento(orden, s, cfg)
+    if hecho is not None:
+        return hecho
     if orden == "estado":
         _imprimir(Registro(cfg.estado_dir).datos | {"bluetooth_responde": bluetooth.responde(s, cfg)})
         return 0

@@ -44,14 +44,17 @@ class Itinerancia:
 
     @resiste(valor(None))
     def fijado(self) -> str | None:
+        """BSSID fijado en el perfil, "" si no hay ninguno y None si no se pudo leer (no se actua)."""
         crudo = self.p.nm("-g", "802-11-wireless.bssid", "connection", "show", self.cfg.conexion)
-        return crudo.replace("\\", "").upper() if crudo else None
+        return None if crudo is None else crudo.replace("\\", "").upper()
 
-    @resiste(lambda *_a, **_k: [])
-    def visibles(self) -> list[str]:
-        """BSSID que anuncian el SSID del perfil en el ultimo escaneo de NetworkManager."""
+    @resiste(valor(None))
+    def visibles(self) -> list[str] | None:
+        """BSSID que anuncian el SSID del perfil en el ultimo escaneo; None si no se pudo leer."""
         ssid = self.p.nm("-g", "802-11-wireless.ssid", "connection", "show", self.cfg.conexion)
-        lista = self.p.nm("-t", "-f", "BSSID,SSID", "device", "wifi", "list", "ifname", self.cfg.iface) or ""
+        lista = self.p.nm("-t", "-f", "BSSID,SSID", "device", "wifi", "list", "ifname", self.cfg.iface)
+        if ssid is None or lista is None:
+            return None
         hallados = (LINEA.match(linea) for linea in lista.splitlines())
         return [h.group(1).replace("\\", "").upper() for h in hallados if h and h.group(2) == ssid]
 
@@ -83,8 +86,8 @@ class Itinerancia:
     def fijar(self) -> bool:
         self.ultimo_intento = self.reloj()
         actual, visibles = self.actual(), self.visibles()
-        if self.fijado() or actual is None or visibles != [actual] or not self.p.cable_util():
-            return False  # ya fijado, sin enlace, varios puntos de acceso o sin cable de respaldo
+        if self.fijado() != "" or actual is None or visibles != [actual] or not self.p.cable_util():
+            return False  # ya fijado o ilegible, sin enlace, varios puntos de acceso o sin cable de respaldo
         ok = self.poner(actual) and esperar(self.s, lambda: red_ok(self.s, self.cfg), 20)
         if not ok:
             self.poner("")  # no volvio con el punto fijado: se deja como estaba
@@ -94,11 +97,16 @@ class Itinerancia:
 
     @resiste(valor(False))
     def soltar_si_falta(self) -> bool:
-        fijado = self.fijado()
-        if not fijado or fijado in self.visibles():
-            return False
-        # solo se quita la fijacion: la reconexion la hace el remedio que sigue en esta misma vuelta
-        ok = self.p.nm("connection", "modify", self.cfg.conexion, "802-11-wireless.bssid", "") is not None
+        fijado, visibles = self.fijado(), self.visibles()
+        if not fijado or visibles is None or fijado in visibles:
+            return False  # sin fijacion, escaneo ilegible o el punto fijado sigue ahi
+        ok = self.soltar()
         log.warning("el punto de acceso fijado %s no se ve: se suelta (%s)", fijado, ok)
         self.anotar("itinerancia", accion="soltar", bssid=fijado, ok=ok)
         return ok
+
+    @resiste(valor(False))
+    def soltar(self) -> bool:
+        """Quita la fijacion sin reconectar (la reconexion la hace el remedio que sigue). Tambien la usan
+        el aviso de caida y restaurar.sh: sin el controlador vivo nadie soltaria un punto que ya no existe."""
+        return self.p.nm("connection", "modify", self.cfg.conexion, "802-11-wireless.bssid", "") is not None
