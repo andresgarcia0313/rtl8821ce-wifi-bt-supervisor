@@ -40,6 +40,9 @@ class Config:
     bt_usb_profundo: bool = False  # authorized=0/1 y usbreset: solo tras probar que el equipo vuelve
     bt_reponer: tuple[str, ...] = ()  # unidades a arrancar tras reparar el Bluetooth (NAP, visibilidad)
     ajustes: bool = True  # vigilar ahorro de energia de la wifi y suspension USB del Bluetooth
+    # Fijar el punto de acceso (sin escaneos de fondo: "itinerancia minima" de Windows) cuando la red tiene
+    # uno solo; se suelta solo si deja de verse. Reconecta la wifi unos segundos: solo con el cable util.
+    fijar_bssid: bool = False
 
 
 # Limites sanos: fuera de ellos el valor se ignora (p. ej. un intervalo >= WatchdogSec mataria al demonio)

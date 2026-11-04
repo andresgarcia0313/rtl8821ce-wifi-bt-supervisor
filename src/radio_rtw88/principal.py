@@ -13,6 +13,7 @@ from .config import Config
 from .diagnostico import SIN_TOCAR_HARDWARE, Estado, diagnosticar
 from .episodios import Episodios
 from .intentos import seguro
+from .itinerancia import Itinerancia
 from .kmsg import Escucha
 from .politica import Politica
 from .red import red_ok
@@ -39,6 +40,9 @@ class Controlador:
         self.respaldo = Respaldo(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("red", tipo, **d))
         self.vigia_cable = VigiaCable(s, lambda tipo, **d: self.episodios.bitacora.anotar("red", tipo, **d))
         self.ajustes = Ajustes(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("radio", tipo, **d))
+        self.itinerancia = Itinerancia(
+            s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("wifi", tipo, **d)
+        )
         self.despertar = threading.Event()
         self.ultimo_crash = self.ultimo_resumen = -1e9
         self.fallas = 0
@@ -71,6 +75,7 @@ class Controlador:
         estado = diagnosticar(m, crash)
         estado = seguro("respaldo: ajustar", lambda: self.respaldo.ajustar(estado), lambda: estado)
         self.registro.causa(estado, m)
+        self.itinerancia.vigilar(estado)  # fija el punto de acceso sano o lo suelta si dejo de verse
         if estado is Estado.SANO:
             self._sano()
             self._respaldo(estado)
