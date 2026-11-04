@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import Config
+from .intentos import resiste, valor
 from .sistema import Sistema
 
 
@@ -28,6 +29,7 @@ ESTACION = {
 ANCLAJE = frozenset({"rndis_host", "cdc_ether", "cdc_ncm", "ipheth"})
 
 
+@resiste(valor(None))
 def interfaz_anclaje(red: str = "/sys/class/net") -> str | None:
     """Interfaz del cable del celular, reconocida por su driver: el enlace Bluetooth tambien se llama
     enx<mac> (udev) y Android cambia la MAC en cada anclaje."""
@@ -40,10 +42,12 @@ def interfaz_anclaje(red: str = "/sys/class/net") -> str | None:
     return None
 
 
+@resiste(valor(False))
 def anclaje_usb(red: str = "/sys/class/net") -> bool:
     return interfaz_anclaje(red) is not None
 
 
+@resiste(lambda *_a, **_k: {})
 def escenario(s: Sistema, cfg: Config) -> dict[str, Any]:
     """Foto rapida de lo que pasaba alrededor de la falla (cada dato es opcional)."""
     datos: dict[str, Any] = {"carga": _leer("/proc/loadavg")}

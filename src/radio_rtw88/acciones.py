@@ -6,18 +6,20 @@ Cada remedio tiene un metodo alterno por si el preferido falla (patron de intent
 from __future__ import annotations
 
 from .config import Config
-from .intentos import con_respaldo
+from .intentos import con_respaldo, resiste, valor
 from .red import esperar, interfaz_presente, levantar, pausa, red_ok
 from .sistema import Sistema
 from .sondas import chip_vivo, debugfs
 
 
+@resiste(valor(False))
 def reasociar(s: Sistema, cfg: Config) -> bool:
     s.correr(["nmcli", "device", "disconnect", cfg.iface], tope=20)
     s.dormir(1)
     return levantar(s, cfg)
 
 
+@resiste(valor(False))
 def reiniciar_firmware(s: Sistema, cfg: Config) -> bool:
     """Recuperacion de firmware del propio rtw88 (escribir en debugfs fw_crash): el driver la hace sola tras
     un crash real. Solo existe sin lockdown; con Secure Boot la politica la omite."""
@@ -31,11 +33,13 @@ def reiniciar_firmware(s: Sistema, cfg: Config) -> bool:
     )
 
 
+@resiste(valor(True))
 def presente(s: Sistema, cfg: Config) -> bool:
     """El dispositivo PCI de la tarjeta sigue en el bus."""
     return s.leer(f"/sys/bus/pci/devices/{cfg.pci}/vendor") is not None
 
 
+@resiste(valor(False))
 def recargar_modulo(s: Sistema, cfg: Config) -> bool:
     if not presente(s, cfg):  # sin dispositivo no hay que recargar: buscarlo en el bus
         s.escribir("/sys/bus/pci/rescan", "1")
@@ -46,6 +50,7 @@ def recargar_modulo(s: Sistema, cfg: Config) -> bool:
     return levantar(s, cfg)
 
 
+@resiste(valor(False))
 def reset_pci(s: Sistema, cfg: Config) -> bool:
     """Quita el dispositivo del bus y lo vuelve a buscar; si el bus no responde, desliga y liga el driver."""
     driver = f"/sys/bus/pci/drivers/{cfg.modulo}"

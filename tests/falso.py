@@ -43,7 +43,7 @@ class SistemaFalso:
         self.ordenes.append(orden)
         if orden[0] in self.al_correr:
             return self.al_correr[orden[0]](orden)
-        if orden[0] == "ping":
+        if orden[0] in ("ping", "arping"):  # arping solo se usa con la puerta de enlace
             ok = self.puerta if orden[-1] == C.puerta else self.internet
             return Resultado(0 if ok and self.asociado else 1)
         if orden[0] == "hcitool":

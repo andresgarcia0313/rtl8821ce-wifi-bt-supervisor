@@ -6,22 +6,25 @@ from collections.abc import Callable
 
 from . import intentos
 from .config import Config
-from .intentos import con_respaldo
+from .intentos import con_respaldo, resiste, valor
 from .sistema import Sistema
-from .sondas import enlace, ping
+from .sondas import enlace, ping, router_responde
 
 
+@resiste(valor(False))
 def red_ok(s: Sistema, cfg: Config) -> bool:
     """Asociada y con respuesta de la puerta de enlace o de internet, siempre por la interfaz wifi."""
-    return enlace(s, cfg)[0] and (ping(s, cfg, cfg.puerta) or any(ping(s, cfg, d) for d in cfg.internet))
+    return enlace(s, cfg)[0] and (router_responde(s, cfg) or any(ping(s, cfg, d) for d in cfg.internet))
 
 
+@resiste(valor(True))
 def pausa(s: Sistema, segundos: float) -> bool:
     """Duerme y devuelve True, para encadenar esperas dentro de una condicion."""
     s.dormir(segundos)
     return True
 
 
+@resiste(valor(False))
 def esperar(s: Sistema, cond: Callable[[], bool], segundos: float, paso: float = 2) -> bool:
     """Repite la condicion hasta que se cumpla o se agote el tiempo (nunca espera sin limite)."""
     for _ in range(max(1, int(segundos / paso))):
@@ -32,10 +35,12 @@ def esperar(s: Sistema, cond: Callable[[], bool], segundos: float, paso: float =
     return cond()
 
 
+@resiste(valor(False))
 def interfaz_presente(s: Sistema, cfg: Config) -> bool:
     return esperar(s, lambda: s.leer(f"/sys/class/net/{cfg.iface}/operstate") is not None, 20)
 
 
+@resiste(valor(False))
 def levantar(s: Sistema, cfg: Config) -> bool:
     """Levanta la conexion y espera trafico; cada orden respalda a la anterior."""
 

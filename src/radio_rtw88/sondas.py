@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 
 from .config import Config
+from .intentos import resiste, valor
 from .sistema import Sistema
 
 
@@ -28,22 +29,37 @@ class Medida:
     frecuencia: int | None = None  # MHz: 2,4 o 5 GHz
 
 
+@resiste(valor(False))
 def ping(s: Sistema, cfg: Config, destino: str) -> bool:
     return s.correr(["ping", "-c1", "-W2", "-I", cfg.iface, destino], tope=5).ok
 
 
+@resiste(valor(False))
+def arp(s: Sistema, cfg: Config, destino: str) -> bool:
+    """Pregunta por ARP quien tiene la direccion del router (como el monitor de enlace de ChromeOS): un
+    router ocupado puede ignorar el ping y aun asi contestar ARP, que es lo que prueba el enlace."""
+    return s.correr(["arping", "-c1", "-w2", "-I", cfg.iface, destino], tope=5).ok
+
+
+def router_responde(s: Sistema, cfg: Config) -> bool:
+    return ping(s, cfg, cfg.puerta) or arp(s, cfg, cfg.puerta)
+
+
+@resiste(valor(None))
 def debugfs(s: Sistema, cfg: Config) -> str | None:
     """Carpeta rtw88 de debugfs. Depende del phyN, que cambia con cada recarga del modulo."""
     phy = s.leer(f"/sys/class/net/{cfg.iface}/phy80211/name")
     return f"/sys/kernel/debug/ieee80211/{phy.strip()}/rtw88" if phy else None
 
 
+@resiste(valor(False))
 def debugfs_escribible(s: Sistema) -> bool:
     """Con Secure Boot el kernel entra en lockdown y prohibe escribir en debugfs, incluso a root."""
     modo = s.leer("/sys/kernel/security/lockdown")
     return modo is None or "[none]" in modo
 
 
+@resiste(valor(True))
 def chip_vivo(s: Sistema, cfg: Config) -> bool:
     """Registros MAC por MMIO; si no hay debugfs, que `iw` todavia vea la interfaz."""
     carpeta = debugfs(s, cfg)
@@ -54,6 +70,16 @@ def chip_vivo(s: Sistema, cfg: Config) -> bool:
     return bool(valores) and any(v != "ffffffff" for v in valores)
 
 
+def _operstate_up(s: Sistema, cfg: Config) -> bool:
+    return (s.leer(f"/sys/class/net/{cfg.iface}/operstate") or "").strip() == "up"
+
+
+def _enlace_por_operstate(s: Sistema, cfg: Config) -> tuple[bool, int | None, float | None, int | None]:
+    """Si leer `iw link` falla, el estado de la interfaz dice igual si hay asociacion (wifi 'up')."""
+    return _operstate_up(s, cfg), None, None, None
+
+
+@resiste(_enlace_por_operstate)
 def enlace(s: Sistema, cfg: Config) -> tuple[bool, int | None, float | None, int | None]:
     r = s.correr(["iw", "dev", cfg.iface, "link"], tope=5)
     if not r.ok or "Connected to" not in r.salida:
@@ -69,6 +95,7 @@ def enlace(s: Sistema, cfg: Config) -> tuple[bool, int | None, float | None, int
     )
 
 
+@resiste(valor(True))
 def ap_visible(s: Sistema, cfg: Config) -> bool:
     """Busca el SSID de la conexion en los resultados de escaneo que ya tiene NetworkManager."""
     ssid = s.correr(["nmcli", "-g", "802-11-wireless.ssid", "connection", "show", cfg.conexion])
@@ -80,11 +107,20 @@ def ap_visible(s: Sistema, cfg: Config) -> bool:
     return escaneo.ok and f"SSID: {nombre}" in escaneo.salida
 
 
+def _medida_minima(s: Sistema, cfg: Config) -> Medida:
+    """Medida de emergencia: solo lo imprescindible y el chip se da por vivo (no se toca a ciegas)."""
+    presente = s.leer(f"/sys/class/net/{cfg.iface}/operstate") is not None
+    asociado = presente and _operstate_up(s, cfg)
+    internet = asociado and any(ping(s, cfg, d) for d in cfg.internet)
+    return Medida(presente, True, asociado, True, asociado and router_responde(s, cfg), internet)
+
+
+@resiste(_medida_minima)
 def medir(s: Sistema, cfg: Config) -> Medida:
     if s.leer(f"/sys/class/net/{cfg.iface}/operstate") is None:
         return Medida(False, False, False, False, False, False)
     asociado, senal, tasa, freq = enlace(s, cfg)
-    puerta = ping(s, cfg, cfg.puerta) if asociado else False
+    puerta = router_responde(s, cfg) if asociado else False
     internet = asociado and any(ping(s, cfg, d) for d in cfg.internet)  # cada destino respalda al anterior
     return Medida(
         interfaz=True,

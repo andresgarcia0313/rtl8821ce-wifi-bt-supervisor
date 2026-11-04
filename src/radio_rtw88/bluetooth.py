@@ -13,7 +13,7 @@ import os
 
 from . import intentos
 from .config import Config
-from .intentos import con_respaldo
+from .intentos import con_respaldo, resiste, valor
 from .red import esperar, pausa
 from .sistema import Sistema
 
@@ -21,6 +21,7 @@ USB = "/sys/bus/usb/devices"
 BTUSB = "/sys/bus/usb/drivers/btusb"
 
 
+@resiste(valor(None))
 def responde(s: Sistema, cfg: Config) -> bool | None:
     """El controlador contesta un comando HCI y bluetoothd lo tiene encendido. None: no se pudo medir
     (falta la herramienta), que nunca debe tomarse como falla del hardware."""
@@ -35,6 +36,7 @@ def responde(s: Sistema, cfg: Config) -> bool | None:
     return r.ok and "Powered: yes" in r.salida
 
 
+@resiste(valor(None))
 def dispositivo_usb(s: Sistema, cfg: Config) -> str | None:
     """Nombre USB del adaptador (p. ej. 1-10): por el hci y, si desaparecio, por vendedor:producto."""
     ruta = s.leer_enlace(f"/sys/class/bluetooth/{cfg.bt_hci}/device")
@@ -53,11 +55,13 @@ def _volvio(s: Sistema, cfg: Config) -> bool:
     return esperar(s, lambda: responde(s, cfg) is True, 20, paso=2)
 
 
+@resiste(valor(False))
 def encender(s: Sistema, cfg: Config) -> bool:
     s.correr(["bluetoothctl", "power", "on"], tope=15)
     return _volvio(s, cfg)
 
 
+@resiste(valor(False))
 def rfkill(s: Sistema, cfg: Config) -> bool:
     s.correr(["rfkill", "block", "bluetooth"])
     s.dormir(2)
@@ -65,6 +69,7 @@ def rfkill(s: Sistema, cfg: Config) -> bool:
     return pausa(s, 2) and encender(s, cfg)
 
 
+@resiste(valor(False))
 def religar(s: Sistema, cfg: Config) -> bool:
     """Desliga y liga btusb en cada interfaz del adaptador: el driver vuelve a cargar el firmware."""
     disp = dispositivo_usb(s, cfg)
@@ -79,6 +84,7 @@ def religar(s: Sistema, cfg: Config) -> bool:
     return pausa(s, 4) and encender(s, cfg)
 
 
+@resiste(valor(False))
 def autorizar(s: Sistema, cfg: Config) -> bool:
     disp = dispositivo_usb(s, cfg)
     if disp is None or not s.escribir(f"{USB}/{disp}/authorized", "0"):
@@ -87,10 +93,12 @@ def autorizar(s: Sistema, cfg: Config) -> bool:
     return s.escribir(f"{USB}/{disp}/authorized", "1") and pausa(s, 5) and encender(s, cfg)
 
 
+@resiste(valor(False))
 def usbreset(s: Sistema, cfg: Config) -> bool:
     return s.correr(["usbreset", cfg.bt_usb], tope=30).ok and pausa(s, 5) and encender(s, cfg)
 
 
+@resiste(valor((False, None)))
 def reparar(s: Sistema, cfg: Config) -> tuple[bool, str | None]:
     """Prueba la escalera; si algo funciono, arranca las unidades que reponen el NAP y la visibilidad."""
     pasos = [

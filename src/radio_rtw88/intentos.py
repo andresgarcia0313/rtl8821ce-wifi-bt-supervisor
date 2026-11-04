@@ -6,9 +6,11 @@ el preferido (el mas suave o el mas preciso) y los demas son respaldos cada vez 
 
 from __future__ import annotations
 
+import functools
 import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import cast
 
 log = logging.getLogger(__name__)
 
@@ -56,3 +58,31 @@ def seguro[T](tarea: str, funcion: Callable[[], T], alternativa: Callable[[], T]
     except Exception:
         log.exception("%s fallo, uso la alternativa", tarea)
         return alternativa()
+
+
+def resiste[**P, T](alternativa: Callable[..., object]) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Catch con proposito para cada funcion que habla con el sistema o lee salidas externas.
+
+    Si la funcion lanza, se anota la traza y responde su alternativa, que recibe los mismos argumentos:
+    otro metodo de medir lo mismo o la respuesta que nunca lleva a tocar el hardware a ciegas (sonda
+    del chip -> vivo, prueba del Bluetooth -> no se sabe, remedio -> no lo logro). Si la alternativa
+    tambien lanza, el error sube al nivel de arriba, que tiene su propio respaldo.
+    """
+
+    def decorar(funcion: Callable[P, T]) -> Callable[P, T]:
+        @functools.wraps(funcion)
+        def envuelta(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return funcion(*args, **kwargs)
+            except Exception:
+                log.exception("%s fallo, responde su alternativa", funcion.__qualname__)
+                return cast(T, alternativa(*args, **kwargs))
+
+        return envuelta
+
+    return decorar
+
+
+def valor(v: object) -> Callable[..., object]:
+    """Alternativa fija: la respuesta segura para el proposito de la funcion (su tipo lo fija la funcion)."""
+    return lambda *_a, **_k: v
