@@ -1,6 +1,6 @@
 [project]
 name = "rtl8821ce-wifi-bt-supervisor"
-version = "2.1.0"
+version = "2.2.0"
 description = "Supervisor y recuperacion de la wifi Realtek RTL8821CE (rtw88) y su Bluetooth USB en Linux"
 readme = "README.md"
 license = "MIT"
