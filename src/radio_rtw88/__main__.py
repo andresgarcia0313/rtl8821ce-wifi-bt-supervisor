@@ -10,6 +10,7 @@ ajustes            opciones del driver al estilo Windows y su valor actual
 estado             contadores acumulados, ultima medida y estado del Bluetooth
 bitacora [n]       ultimos n eventos en frases sencillas
 eventos [n]        ultimos n eventos de la bitacora (por que fallo, en que escenario, evidencia)
+informe            un archivo con evidencia, bitacora legible, ajustes y medida, para revisar o compartir
 evidencia          guarda ahora los registros completos de wifi y Bluetooth (para revisar a mano)
 reparar            una vuelta completa: diagnostica y aplica el remedio si hace falta
 bt estado|reparar  el Bluetooth responde a un comando HCI? / aplica la escalera de reparacion
@@ -37,6 +38,7 @@ from . import (
     demonio,
     energia,
     evidencia,
+    informe,
     principal,
     relato,
     servicio,
@@ -86,6 +88,10 @@ def _mantenimiento(orden: str, args: list[str], s: SistemaReal, cfg: Config) -> 
             "critical", "systemd dejo de reiniciar el controlador de radio; siguen los de reserva"
         )
         return 0
+    if orden == "informe":
+        ruta = informe.generar(s, cfg)
+        print(ruta or "no se pudo generar el informe")
+        return 0 if ruta else 1
     if orden == "restablecer-radio":
         pasos = [
             energia.poner_ahorro(s, cfg, False),
