@@ -174,3 +174,29 @@ def test_la_quietud_se_cuenta_de_nuevo_tras_trafico_intermedio() -> None:
     s.trafico(10)  # vuelve a estar quieto: aun no pasan 60 s seguidos
     e.vigilar()
     assert s.ahorro == "off"
+
+
+def test_modo_baja_latencia_no_deja_reposar_durante_un_juego_en_bateria() -> None:
+    e, s, reloj, notas = nuevo(perfil_energia="ahorro")
+    contador = {"n": 0}
+
+    def salida(_o: list[str]) -> Resultado:
+        return Resultado(
+            0,
+            f'\tudp dport 3074 counter packets {contador["n"]} bytes 1 jump urgente comment "tiempo-real"\n',
+        )
+
+    s.al_correr["nft"] = salida
+    e.vigilar()
+    reloj.t += 70
+    e.vigilar()
+    assert s.ahorro == "on"  # sin juego, reposa
+    for _ in range(3):  # juego: 30 paquetes por segundo de tiempo real con poco trafico total
+        reloj.t += 10
+        contador["n"] += 300
+        e.vigilar()
+    assert s.ahorro == "off" and any(n.get("baja_latencia") for n in notas)
+    for _ in range(9):  # 90 s sin juego: el modo termina y vuelve a reposar
+        reloj.t += 10
+        e.vigilar()
+    assert s.ahorro == "on" and notas[-1].get("baja_latencia") is False

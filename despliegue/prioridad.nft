@@ -15,9 +15,9 @@ table inet radio_prioridad {
 		icmpv6 type echo-request counter jump urgente
 		tcp sport 22 meta length < 256 counter jump urgente
 		# Juegos: Xbox, Steam y PlayStation
-		udp dport { 3074, 3478-3480, 27015-27030 } counter jump urgente
+		udp dport { 3074, 3478-3480, 27015-27030 } counter jump urgente comment "tiempo-real"
 		# Videollamadas: STUN/TURN de WebRTC (Meet, Teams, WhatsApp web), Meet y Zoom
-		udp dport { 3481, 19302-19309, 8801-8810 } counter jump video
+		udp dport { 3481, 19302-19309, 8801-8810 } counter jump video comment "tiempo-real"
 		# Tailscale (clúster y canal de control): sus paquetes chicos (control, confirmaciones) adelantan
 		udp sport 41641 meta length < 200 counter jump video
 	}

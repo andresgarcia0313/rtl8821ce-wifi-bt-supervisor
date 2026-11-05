@@ -30,6 +30,8 @@ REPOSO_ANTES = 60.0  # segundos seguidos casi sin trafico antes de encender el a
 SIN_TOPE = 120  # 30 dBm en cuartos de dBm: por encima del maximo del chip, no limita nada
 RANGOS_SAR = 4  # rangos de frecuencia que acepta rtw88 para SAR
 CADA_REVISION = 300.0
+TIEMPO_REAL_PPS = 5.0  # paquetes por segundo de juego o videollamada que activan el modo baja latencia
+BAJA_LATENCIA = 60.0  # segundos que dura el modo tras el ultimo trafico de tiempo real
 
 
 @resiste(valor("rendimiento"))
@@ -89,6 +91,19 @@ def conexion_rapida_bt(s: Sistema, cfg: Config, encendida: bool) -> bool:
 
 
 @resiste(valor(None))
+def paquetes_tiempo_real(s: Sistema) -> int | None:
+    """Paquetes de juegos y videollamadas que marco la tabla de prioridad (reglas "tiempo-real")."""
+    r = s.correr(["nft", "list", "chain", "inet", "radio_prioridad", "salida"], tope=5)
+    if not r.ok:
+        return None
+    return sum(
+        int(m.group(1))
+        for linea in r.salida.splitlines()
+        if "tiempo-real" in linea and (m := re.search(r"counter packets (\d+)", linea))
+    )
+
+
+@resiste(valor(None))
 def ahorro_actual(s: Sistema, cfg: Config) -> bool | None:
     r = s.correr(["iw", "dev", cfg.iface, "get", "power_save"], tope=5)
     hallado = re.search(r"Power save:\s*(\w+)", r.salida) if r.ok else None
@@ -110,6 +125,9 @@ class Energia:
         self.muestra: tuple[float, int] | None = None
         self.tope: int | None = None  # dBm del tope por calor (None: sin tope)
         self.quieto_desde: float | None = None  # desde cuando la interfaz esta casi sin trafico
+        self.tiempo_real: tuple[float, int] | None = None  # ultima muestra del trafico de juegos y llamadas
+        self.baja_latencia_hasta = -1e9
+        self.en_baja_latencia = False
 
     @resiste(valor(None))
     def vigilar(self) -> None:
@@ -133,6 +151,9 @@ class Energia:
         if actual == "rendimiento":
             self.quieto_desde = None
             return False
+        if self.baja_latencia():
+            self.quieto_desde = None
+            return False
         ahora, total = self.reloj(), paquetes(self.s, self.cfg)
         previa, self.muestra = self.muestra, (ahora, total) if total is not None else None
         if previa is None or total is None or ahora <= previa[0]:
@@ -148,6 +169,27 @@ class Energia:
             previa[0] if self.quieto_desde is None else self.quieto_desde
         )  # quieto desde la muestra anterior
         return bool(self.ahorro) or ahora - self.quieto_desde >= REPOSO_ANTES
+
+    @resiste(valor(False))
+    def baja_latencia(self) -> bool:
+        """Como el modo de baja latencia de Android: con un juego o una videollamada en curso, la wifi no
+        reposa aunque el equipo este en bateria. Dura 60 s despues del ultimo paquete de tiempo real."""
+        ahora, total = self.reloj(), paquetes_tiempo_real(self.s)
+        previa, self.tiempo_real = self.tiempo_real, (ahora, total) if total is not None else None
+        hay_juego = previa and total is not None and ahora > previa[0]
+        if hay_juego and (total - previa[1]) / (ahora - previa[0]) >= TIEMPO_REAL_PPS:  # type: ignore[index,operator]
+            self.baja_latencia_hasta = ahora + BAJA_LATENCIA
+        activo = ahora < self.baja_latencia_hasta
+        if activo != self.en_baja_latencia:
+            self.en_baja_latencia = activo
+            texto = (
+                "modo baja latencia: juego o videollamada en curso"
+                if activo
+                else "modo baja latencia: terminado"
+            )
+            log.info(texto)
+            self.anotar("energia", baja_latencia=activo, texto=texto)
+        return activo
 
     @resiste(valor(None))
     def ajustar_ahorro(self, quiere: bool) -> None:
