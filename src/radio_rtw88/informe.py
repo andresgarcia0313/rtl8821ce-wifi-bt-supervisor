@@ -22,6 +22,7 @@ from .sistema import Sistema
 
 log = logging.getLogger(__name__)
 EVENTOS = 300  # eventos de la bitacora que entran al informe
+GUARDADOS = 10  # informes que se conservan: los mas viejos se borran
 
 
 @resiste(valor(None))
@@ -44,5 +45,7 @@ def generar(s: Sistema, cfg: Config) -> str | None:
     salida.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(salida, "w:gz") as tar:
         tar.add(base, arcname=salida.name.removesuffix(".tar.gz"))
+    for viejo in sorted(salida.parent.glob("informe-*.tar.gz"))[:-GUARDADOS]:
+        viejo.unlink(missing_ok=True)
     log.info("informe en %s", salida)
     return str(salida)
