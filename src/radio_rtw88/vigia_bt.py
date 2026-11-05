@@ -14,7 +14,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from . import bluetooth, cerrojo, servicio
+from . import bluetooth, cerrojo, servicio, sondas
 from .config import Config
 from .episodios import Episodios
 from .sistema import Sistema
@@ -61,6 +61,9 @@ class VigiaBt:
         if not self.cfg.bluetooth or time.monotonic() - self.ultimo < self.espera():
             return
         self.ultimo = time.monotonic()
+        if sondas.apagada_a_proposito(self.s, "bluetooth"):
+            self.sospecha = False  # apagado por el usuario: se respeta
+            return
         vivo = bluetooth.responde(self.s, self.cfg)
         if vivo is None:  # sin hcitool o sin bluetoothctl no se sabe: nunca se repara a ciegas
             log.warning("no se pudo medir el Bluetooth (falta hcitool o bluetoothctl)")

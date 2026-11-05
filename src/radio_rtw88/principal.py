@@ -74,6 +74,13 @@ class Controlador:
             self.alerta_hasta = time.monotonic() + ALERTA
             self.despertar.set()
 
+    def al_despertar(self) -> None:
+        """El equipo salio de suspension: revisar wifi y Bluetooth ya, al ritmo corto un rato."""
+        log.info("el equipo desperto de una suspension: reviso ya")
+        self.alerta_hasta = time.monotonic() + ALERTA
+        self.vigia_bt.revisar_ya()
+        self.despertar.set()
+
     def intervalo(self) -> float:
         """Ritmo corto con sospecha, falla o evento reciente; largo con todo sano (menos CPU y energia)."""
         alerta = self.fallas > 0 or time.monotonic() < self.alerta_hasta or self.vigia_bt.sospecha

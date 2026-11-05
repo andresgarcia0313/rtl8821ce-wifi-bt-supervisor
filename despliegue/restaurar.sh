@@ -8,7 +8,8 @@ systemctl disable --now controlador-radio.service 2>/dev/null || true
 # el punto de acceso fijado queda en el perfil de NetworkManager: sin el controlador nadie lo soltaria
 grep -qs '^fijar_bssid = true' /etc/controlador-radio/config.toml && /usr/local/bin/controlador-radio soltar-bssid || true
 rm -f /etc/systemd/system/controlador-radio.service /etc/systemd/system/controlador-radio-caido.service \
-  /etc/udev/rules.d/81-bluetooth-sin-suspension.rules /usr/local/bin/controlador-radio
+  /etc/udev/rules.d/81-bluetooth-sin-suspension.rules /usr/local/bin/controlador-radio \
+  /usr/lib/systemd/system-sleep/controlador-radio-despertar
 lista=/etc/controlador-radio/reserva.lista
 if [[ -f "$lista" ]]; then
   while read -r unidad; do

@@ -27,6 +27,18 @@ class Medida:
     senal: int | None = None  # dBm
     tasa_tx: float | None = None  # Mbit/s
     frecuencia: int | None = None  # MHz: 2,4 o 5 GHz
+    apagada: bool = False  # alguien apago la radio a proposito (rfkill): no se repara
+
+
+@resiste(valor(False))
+def apagada_a_proposito(s: Sistema, tipo: str) -> bool:
+    """Interruptor de radio (rfkill) en "apagado" por software o por la tecla del equipo."""
+    for nombre in s.listar("/sys/class/rfkill"):
+        base = f"/sys/class/rfkill/{nombre}"
+        bloqueo = (s.leer(f"{base}/soft") or "") + (s.leer(f"{base}/hard") or "")
+        if (s.leer(f"{base}/type") or "").strip() == tipo and "1" in bloqueo:
+            return True
+    return False
 
 
 @resiste(valor(False))
@@ -117,6 +129,8 @@ def _medida_minima(s: Sistema, cfg: Config) -> Medida:
 
 @resiste(_medida_minima)
 def medir(s: Sistema, cfg: Config) -> Medida:
+    if apagada_a_proposito(s, "wlan"):
+        return Medida(True, True, False, False, False, False, apagada=True)
     if s.leer(f"/sys/class/net/{cfg.iface}/operstate") is None:
         return Medida(False, False, False, False, False, False)
     asociado, senal, tasa, freq = enlace(s, cfg)

@@ -7,6 +7,7 @@ de verdad, deja de latir y systemd reinicia el demonio; si falla seguido, entra 
 from __future__ import annotations
 
 import logging
+import signal
 import sys
 
 from . import escucha_red, intentos, servicio
@@ -21,6 +22,7 @@ MAX_ERRORES = 20  # vueltas seguidas con excepcion antes de salir y dejar que sy
 def bucle(c: Controlador) -> int:
     intentos.latido = lambda: servicio.notificar("WATCHDOG=1")
     c.escucha.iniciar()
+    signal.signal(signal.SIGUSR1, lambda _n, _f: c.al_despertar())  # lo manda el gancho de suspension
     intentos.seguro("escucha de la wifi", c.escucha_red.iniciar, lambda: None)
     escucha_red.armar_umbral(c.s, c.cfg)
     servicio.notificar("READY=1")

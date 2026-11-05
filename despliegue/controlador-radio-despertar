@@ -1,0 +1,5 @@
+#!/bin/sh
+# Gancho de systemd-sleep (/usr/lib/systemd/system-sleep/): al despertar de una suspension avisa al
+# controlador de radio para que revise la wifi y el Bluetooth de inmediato, sin esperar su ritmo.
+[ "$1" = post ] && systemctl kill -s USR1 --kill-whom=main controlador-radio.service 2>/dev/null
+exit 0

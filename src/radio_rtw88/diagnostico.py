@@ -20,12 +20,15 @@ class Estado(StrEnum):
     DESASOCIADO = "desasociado"  # el punto de acceso esta pero no hay enlace: reasociar
     AP_AUSENTE = "ap_ausente"  # el router no se ve: no tocar el hardware, esperar
     PROVEEDOR = "proveedor"  # la red local responde y el internet no: no es la wifi
+    APAGADA = "apagada"  # el usuario apago la radio (rfkill): se respeta, no se repara
 
 
-SIN_TOCAR_HARDWARE = frozenset({Estado.SANO, Estado.AP_AUSENTE, Estado.PROVEEDOR})
+SIN_TOCAR_HARDWARE = frozenset({Estado.SANO, Estado.AP_AUSENTE, Estado.PROVEEDOR, Estado.APAGADA})
 
 
 def diagnosticar(m: Medida, crash_reciente: bool = False) -> Estado:
+    if m.apagada:
+        return Estado.APAGADA
     if not m.interfaz:
         return Estado.SIN_INTERFAZ
     # una sonda de firmware fallida o un crash solo cuentan si ademas no hay trafico: tras un crash el
