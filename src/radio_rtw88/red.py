@@ -49,6 +49,11 @@ def levantar(s: Sistema, cfg: Config) -> bool:
 
     pasos = [
         ("nmcli con up", con(["nmcli", "connection", "up", cfg.conexion], 10)),
+        *(
+            [("nmcli con up 2,4 GHz", con(["nmcli", "connection", "up", cfg.conexion_2g], 10))]
+            if cfg.conexion_2g
+            else []
+        ),
         ("nmcli device connect", con(["nmcli", "device", "connect", cfg.iface], 10)),
         ("wpa_cli reassociate", con(["wpa_cli", "-i", cfg.iface, "reassociate"], 20)),
     ]

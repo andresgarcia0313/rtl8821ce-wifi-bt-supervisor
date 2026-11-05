@@ -35,3 +35,5 @@ ajustes = true
 # Fijar el punto de acceso cuando la red tiene uno solo (sin escaneo de fondo); se suelta si deja de verse.
 # Aplicarlo reconecta la wifi unos segundos: solo ocurre con el cable de respaldo util.
 fijar_bssid = false
+# Perfil de la misma casa en 2,4 GHz: se usa solo si lejos del router rinde mejor que 5 GHz (vacio: no).
+conexion_2g = ""

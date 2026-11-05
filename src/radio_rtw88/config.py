@@ -18,6 +18,7 @@ class Config:
     aviso_env: str = ""  # archivo con las variables del modulo de avisos (vacio: ninguno)
     iface: str = "wlo1"
     conexion: str = "wifi-casa"
+    conexion_2g: str = ""  # perfil de la misma casa en 2,4 GHz (vacio: sin cambio de banda)
     pci: str = "0000:02:00.0"
     modulo: str = "rtw88_8821ce"  # el modulo del chip; modprobe -r baja tambien rtw88_pci y rtw88_core
     puerta: str = "192.0.2.1"  # tu puerta de enlace (valor de documentacion)
