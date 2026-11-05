@@ -10,6 +10,7 @@ vuelta sin reiniciar, asi que esos pasos se encienden solo despues de probar que
 from __future__ import annotations
 
 import os
+import re
 
 from . import intentos
 from .config import Config
@@ -34,6 +35,20 @@ def responde(s: Sistema, cfg: Config) -> bool | None:
     if r.rc == 127:
         return None
     return r.ok and "Powered: yes" in r.salida
+
+
+@resiste(lambda *_a, **_k: {})
+def senal_enlaces(s: Sistema, cfg: Config) -> dict[str, int]:
+    """Senal de cada equipo conectado, en dB respecto del rango ideal del receptor (0 = ideal, negativo =
+    por debajo). Es lo que da el comando HCI estandar Read RSSI; este chip no mide la calidad del enlace."""
+    conectados = s.correr(["bluetoothctl", "devices", "Connected"], tope=10).salida
+    senales = {}
+    for direccion in re.findall(r"Device ((?:[0-9A-F]{2}:){5}[0-9A-F]{2})", conectados):
+        r = s.correr(["hcitool", "-i", cfg.bt_hci, "rssi", direccion], tope=5)
+        hallado = re.search(r"RSSI return value:\s*(-?\d+)", r.salida) if r.ok else None
+        if hallado:
+            senales[direccion] = int(hallado.group(1))
+    return senales
 
 
 @resiste(valor(None))

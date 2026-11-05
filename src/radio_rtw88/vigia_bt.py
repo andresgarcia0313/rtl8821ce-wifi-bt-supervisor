@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 CADA_BT = 300  # segundos entre revisiones con el Bluetooth sano
 CONFIRMAR_BT = 30  # tras una lectura mala, segundos hasta la segunda que confirma la falla
 TOPE_BT = 43200
+BT_DEBIL = -30  # dB por debajo del rango ideal del receptor: enlace en riesgo de cortes
 
 
 class VigiaBt:
@@ -38,6 +39,7 @@ class VigiaBt:
             time.monotonic()
         )  # primera revision a los CADA_BT s: tras arrancar el hci tarda en estar
         self.sospecha = False  # la ultima lectura fallo y falta confirmarla
+        self.debiles: dict[str, bool] = {}  # equipos conectados con senal debil
         self._fallos_ruta = Path(cfg.estado_dir) / "bt-fallos"
         try:
             self.fallos = int(self._fallos_ruta.read_text())
@@ -71,6 +73,7 @@ class VigiaBt:
         if vivo:
             self.sospecha = False
             self._recuperado()
+            self._senales()
             return
         if not self.sospecha:
             self.sospecha = True  # una sola lectura no basta: se confirma CONFIRMAR_BT s despues
@@ -95,6 +98,17 @@ class VigiaBt:
                 "critical",
                 "el Bluetooth no responde; reintento cada vez mas espaciado. Ver la bitacora de eventos",
             )
+
+    def _senales(self) -> None:
+        """Anota cuando un enlace se debilita o se recupera (no en cada revision)."""
+        for direccion, db in bluetooth.senal_enlaces(self.s, self.cfg).items():
+            debil = db <= BT_DEBIL
+            if debil != self.debiles.get(direccion, False):
+                self.debiles[direccion] = debil
+                estado = "debil" if debil else "recuperado"
+                self.episodios.bt(
+                    "senal", f"enlace con {direccion} {estado}: {db} dB respecto del rango ideal"
+                )
 
     def _recuperado(self) -> None:
         if self.fallos:

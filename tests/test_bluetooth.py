@@ -58,3 +58,13 @@ def test_pasos_usb_profundos_solo_si_estan_encendidos() -> None:
     ok, paso = bluetooth.reparar(s, replace(CFG, bt_usb_profundo=True))
     assert ok and paso == "usbreset"
     assert ("/sys/bus/usb/devices/1-10/authorized", "0") in s.escrituras  # antes probo authorized
+
+
+def test_senal_de_los_enlaces_conectados() -> None:
+    s = SistemaFalso()
+    conectados = "Device 02:00:00:00:00:01 equipo-a\nDevice 02:00:00:00:00:02 equipo-b\n"
+    s.al_correr["bluetoothctl"] = lambda _o: Resultado(0, conectados)
+    s.al_correr["hcitool"] = lambda o: Resultado(
+        0, "RSSI return value: -42\n" if o[-1].endswith("02") else "RSSI return value: -3\n"
+    )
+    assert bluetooth.senal_enlaces(s, Config()) == {"02:00:00:00:00:01": -3, "02:00:00:00:00:02": -42}

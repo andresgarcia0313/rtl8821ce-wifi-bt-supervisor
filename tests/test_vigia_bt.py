@@ -127,3 +127,19 @@ def test_tras_reiniciar_con_fallos_guardados_revisa_a_los_cinco_minutos(vigia) -
     reloj.t += 1
     otro.vigilar()
     assert otro.sospecha  # reviso: el Bluetooth sigue mudo
+
+
+def test_anota_solo_cuando_un_enlace_se_debilita_o_se_recupera(
+    vigia, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    v, reloj, _, estado = vigia
+    estado["responde"] = True
+    notas: list[str] = []
+    v.episodios = type("Ep", (), {"bt": lambda self, tipo, detalle, *a: notas.append(detalle)})()
+    senal = {"02:00:00:00:00:01": -10}
+    monkeypatch.setattr(vigia_bt.bluetooth, "senal_enlaces", lambda _s, _c: dict(senal))
+    for db in (-10, -45, -50, -5):
+        senal["02:00:00:00:00:01"] = db
+        reloj.t += vigia_bt.CADA_BT
+        v.vigilar()
+    assert len(notas) == 2 and "debil" in notas[0] and "recuperado" in notas[1]
