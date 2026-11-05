@@ -95,6 +95,11 @@ Un servicio de systemd en Python 3.12+, solo con la biblioteca estándar, en esp
 | Bitácora clara | cada evento con su frase sencilla; `controlador-radio bitacora` |
 | Bluetooth | señal de cada enlace vigilada; conexión rápida solo en rendimiento |
 
+**Medido el 2026-11-04 con la versión 2.2.0:**
+- En 2,4 GHz (a -40 dBm), la red de la casa perdió el 7 % de los paquetes, con una demora media de 28 ms y una máxima de 426 ms. En 5 GHz perdió el 0 %. El controlador volvió solo a 5 GHz a los 37 s y el clúster siguió `Ready`.
+- El router de la casa tiene ratos en que deja de contestar el ping: 46 a 68 % de pings perdidos en tramos de 90 s a 10 min, mientras internet respondía. La consulta ARP siguió viendo el router, así que el controlador no lo tomó como falla.
+- El controlador usa unos 12 MB de memoria y el 0,3 % de un núcleo (2,1 s de CPU en 11 min).
+
 **Errores frecuentes de otros que se evitan:** reiniciar la tarjeta ante cualquier falta de internet, vigilar con un solo destino, reparar en bucle, itinerancia agresiva, escaneos frecuentes, creer que los ajustes de energía lo curan todo, cortar el puerto USB del Bluetooth, restauraciones a ciegas y ping sin elegir la interfaz. Detalle en `docs/adr/0004-errores-por-funcion-ajustes-e-itinerancia.md`.
 
 Protecciones: tope de 4 acciones de hardware por hora guardado en disco; tras una falla del proveedor, 10 min solo reasociar; watchdog de systemd de 300 s; `MemoryMax=150M`, `CPUQuota=30%` y 8 capacidades; cada vuelta en try/except con un respaldo mínimo; cerrojo `flock`; aviso si systemd deja de reiniciarlo (`OnFailure`). Los supervisores anteriores quedan de reserva con `ExecCondition`: actúan solo si este no está activo o está en `observar`. No arma pánicos ni reinicios automáticos del equipo.
