@@ -26,6 +26,9 @@ MemoryMax=150M
 CPUQuota=30%
 TasksMax=64
 Nice=-5
+# Con el equipo sobrecargado el controlador y sus sondas siguen teniendo su parte de CPU y disco
+CPUWeight=400
+IOWeight=400
 # Minimo privilegio compatible con su trabajo: root con solo las capacidades que usa (modprobe, /sys de
 # PCI y USB, red y rfkill, ping y HCI crudo, leer el kernel, terminar hijos colgados)
 CapabilityBoundingSet=CAP_SYS_MODULE CAP_SYS_ADMIN CAP_NET_ADMIN CAP_NET_RAW CAP_SYSLOG CAP_KILL CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH

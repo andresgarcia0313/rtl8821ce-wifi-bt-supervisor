@@ -37,6 +37,7 @@ base=despliegue/config.toml
 sed -i "s/^modo = .*/modo = \"$MODO\"/" /etc/controlador-radio/config.toml
 install -m 0644 despliegue/controlador-radio.service despliegue/controlador-radio-caido.service /etc/systemd/system/
 install -m 0644 despliegue/81-bluetooth-sin-suspension.rules /etc/udev/rules.d/
+install -m 0644 despliegue/prioridad.nft /etc/controlador-radio/prioridad.nft
 install -D -m 0755 despliegue/controlador-radio-despertar /usr/lib/systemd/system-sleep/controlador-radio-despertar
 udevadm control --reload 2>/dev/null || true
 for unidad in ${RESERVA:-}; do

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 
@@ -28,6 +29,7 @@ from .vigia_cable import VigiaCable
 
 log = logging.getLogger(__name__)
 VENTANA_CRASH = 120  # segundos durante los que un crash del kernel cuenta para el diagnostico
+PRESION_ALTA = 50.0  # % de tiempo con tareas esperando CPU (PSI, ultimos 10 s)
 ALERTA = 120  # segundos de ritmo corto tras un evento de la wifi
 CADA_RESUMEN = 600  # segundos entre intentos de enviar el resumen diario (solo sale una vez al dia)
 
@@ -74,6 +76,12 @@ class Controlador:
             self.alerta_hasta = time.monotonic() + ALERTA
             self.despertar.set()
 
+    def confirmar(self) -> int:
+        """Con la CPU muy presionada una sonda puede vencer sin falla de la wifi: dos confirmaciones mas."""
+        crudo = self.s.leer("/proc/pressure/cpu") or ""
+        presion = re.search(r"some avg10=([\d.]+)", crudo)
+        return self.cfg.confirmar + (2 if presion and float(presion.group(1)) >= PRESION_ALTA else 0)
+
     def al_despertar(self) -> None:
         """El equipo salio de suspension: revisar wifi y Bluetooth ya, al ritmo corto un rato."""
         log.info("el equipo desperto de una suspension: reviso ya")
@@ -115,7 +123,7 @@ class Controlador:
             self.desde_falla = time.monotonic()
             self.episodios.falla(estado, m, self.registro.crashes_desde(86400))
         urgente = estado is Estado.SIN_INTERFAZ or (estado is Estado.FIRMWARE and crash)
-        if self.fallas < self.cfg.confirmar and not urgente:
+        if self.fallas < self.confirmar() and not urgente:
             return estado  # histeresis: confirmar antes de actuar
         self.escucha.silenciar(180)  # los remedios provocan mensajes de crash: no son nuevos
         desenlace = self.politica.actuar(estado)

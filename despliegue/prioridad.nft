@@ -1,0 +1,32 @@
+#!/usr/sbin/nft -f
+# Prioridad del trafico urgente por la wifi (como Intel Killer o los routers para juegos): se marca con DSCP y
+# el kernel (cfg80211) lo pone en las colas WMM de voz o video, que salen antes y con menos espera aunque el
+# canal este congestionado. EF -> voz; AF41 -> video. Lo demas sigue igual. Lo carga el controlador de radio.
+table inet radio_prioridad
+delete table inet radio_prioridad
+table inet radio_prioridad {
+	chain salida {
+		type filter hook output priority mangle; policy accept;
+		oifname != "wl*" return
+		# DNS, hora, ping y SSH interactivo (paquetes chicos): respuesta inmediata
+		udp dport { 53, 123 } counter jump urgente
+		tcp dport 53 counter jump urgente
+		icmp type echo-request counter jump urgente
+		icmpv6 type echo-request counter jump urgente
+		tcp sport 22 meta length < 256 counter jump urgente
+		# Juegos: Xbox, Steam y PlayStation
+		udp dport { 3074, 3478-3480, 27015-27030 } counter jump urgente
+		# Videollamadas: STUN/TURN de WebRTC (Meet, Teams, WhatsApp web), Meet y Zoom
+		udp dport { 3481, 19302-19309, 8801-8810 } counter jump video
+		# Tailscale (clúster y canal de control): sus paquetes chicos (control, confirmaciones) adelantan
+		udp sport 41641 meta length < 200 counter jump video
+	}
+	chain urgente {
+		meta nfproto ipv4 ip dscp set ef
+		meta nfproto ipv6 ip6 dscp set ef
+	}
+	chain video {
+		meta nfproto ipv4 ip dscp set af41
+		meta nfproto ipv6 ip6 dscp set af41
+	}
+}

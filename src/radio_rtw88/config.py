@@ -48,6 +48,9 @@ class Config:
     temp_max: float = 90.0  # grados: por encima se pone un tope de potencia temporal
     temp_ok: float = 78.0  # grados: por debajo se vuelve a la potencia maxima
     potencia_calor: int = 15  # dBm del tope por calor
+    prioridad: str = (
+        "/etc/controlador-radio/prioridad.nft"  # marcas DSCP del trafico urgente ("" = sin ellas)
+    )
     ajustes: bool = True  # vigilar ahorro de energia de la wifi y suspension USB del Bluetooth
     # Fijar el punto de acceso (sin escaneos de fondo: "itinerancia minima" de Windows) cuando la red tiene
     # uno solo; se suelta solo si deja de verse. Reconecta la wifi unos segundos: solo con el cable util.

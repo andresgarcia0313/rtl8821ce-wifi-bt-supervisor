@@ -131,3 +131,12 @@ def test_lineas_repetidas_del_kernel_dan_una_sola_evidencia(tmp_path: Path, avis
     c.vuelta()
     eventos = [e for e in c.episodios.bitacora.ultimos() if e["tipo"] == "error_kernel"]
     assert len(eventos) == 5 and sum(1 for e in eventos if e["evidencia"]) == 1
+
+
+def test_con_la_cpu_muy_presionada_confirma_mas_antes_de_actuar(tmp_path: Path) -> None:
+    s = SistemaFalso()
+    c = nuevo(tmp_path, s)
+    s.archivos["/proc/pressure/cpu"] = "some avg10=12.00 avg60=10.00 avg300=9.00 total=1\n"
+    assert c.confirmar() == c.cfg.confirmar
+    s.archivos["/proc/pressure/cpu"] = "some avg10=75.00 avg60=40.00 avg300=20.00 total=1\n"
+    assert c.confirmar() == c.cfg.confirmar + 2

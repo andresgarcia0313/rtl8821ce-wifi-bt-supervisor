@@ -72,5 +72,14 @@ def test_lista_las_opciones_al_estilo_windows() -> None:
         "ahorro_energia_wifi": "on",
         "bluetooth_suspension_usb": "auto",
         "pais_radio": "CO",
+        "prioridad_trafico": "cargada",
         "disable_aspm": "Y",
     }
+
+
+def test_vuelve_a_cargar_la_prioridad_de_trafico_si_falta() -> None:
+    a, s, notas = vigia()
+    s.archivos[ENERGIA] = "on\n"
+    s.al_correr["nft"] = lambda o: Resultado(1) if o[1] == "list" else Resultado(0)
+    assert a.vigilar() == ["prioridad_trafico"]
+    assert s.ordeno("nft", "-f", Config().prioridad) and notas[-1]["corregido"]

@@ -43,6 +43,13 @@ def energia_bt(s: Sistema, cfg: Config) -> str | None:
     return leido.strip() if leido else None
 
 
+@resiste(valor(True))
+def prioridad_cargada(s: Sistema) -> bool:
+    """La tabla de marcas DSCP sigue en el kernel (si no se pudo saber, se da por cargada)."""
+    r = s.correr(["nft", "list", "table", "inet", "radio_prioridad"], tope=5)
+    return r.ok or r.rc == 127
+
+
 @resiste(valor(None))
 def leer_todos(s: Sistema, cfg: Config) -> dict[str, str | None]:
     """Cada opcion al estilo Windows con su valor en Linux (comando `controlador-radio ajustes`)."""
@@ -51,6 +58,7 @@ def leer_todos(s: Sistema, cfg: Config) -> dict[str, str | None]:
         "ahorro_energia_wifi": ahorro_wifi(s, cfg),
         "bluetooth_suspension_usb": energia_bt(s, cfg),
         "pais_radio": pais.group(1) if pais else None,
+        "prioridad_trafico": "cargada" if prioridad_cargada(s) else "sin cargar",
     }
     for nombre in PARAMETROS:
         for modulo in ("rtw88_pci", "rtw88_core"):
@@ -80,6 +88,8 @@ class Ajustes:
         desviados = []  # el ahorro de la wifi lo decide energia.Energia segun el perfil
         if self.cfg.bluetooth and energia_bt(self.s, self.cfg) == "auto":
             desviados.append("bluetooth_suspension_usb")
+        if self.cfg.prioridad and not prioridad_cargada(self.s):
+            desviados.append("prioridad_trafico")
         for nombre in desviados:
             ok = self.cfg.modo == "actuar" and self.corregir(nombre)
             log.warning("ajuste '%s' desviado; corregido: %s", nombre, ok)
@@ -88,5 +98,7 @@ class Ajustes:
 
     @resiste(valor(False))
     def corregir(self, nombre: str) -> bool:
+        if nombre == "prioridad_trafico":
+            return self.s.correr(["nft", "-f", self.cfg.prioridad], tope=10).ok
         ruta = ruta_energia_bt(self.s, self.cfg)
         return ruta is not None and self.s.escribir(ruta, "on")

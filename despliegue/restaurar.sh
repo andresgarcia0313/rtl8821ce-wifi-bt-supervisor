@@ -16,6 +16,7 @@ if [[ -f "$lista" ]]; then
     [[ -n "$unidad" ]] && rm -f "/etc/systemd/system/$unidad.d/reserva.conf"
   done < "$lista"
 fi
+nft delete table inet radio_prioridad 2>/dev/null || true
 systemctl daemon-reload
 if [[ -f "$lista" ]]; then
   while read -r unidad; do
