@@ -12,6 +12,7 @@ from .ajustes import Ajustes
 from .config import Config
 from .diagnostico import SIN_TOCAR_HARDWARE, Estado, diagnosticar
 from .episodios import Episodios
+from .escucha_red import EscuchaRed
 from .intentos import seguro
 from .itinerancia import Itinerancia
 from .kmsg import Escucha
@@ -25,6 +26,7 @@ from .vigia_cable import VigiaCable
 
 log = logging.getLogger(__name__)
 VENTANA_CRASH = 120  # segundos durante los que un crash del kernel cuenta para el diagnostico
+ALERTA = 120  # segundos de ritmo corto tras un evento de la wifi
 CADA_RESUMEN = 600  # segundos entre intentos de enviar el resumen diario (solo sale una vez al dia)
 
 
@@ -43,7 +45,9 @@ class Controlador:
         self.itinerancia = Itinerancia(
             s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("wifi", tipo, **d)
         )
+        self.escucha_red = EscuchaRed(cfg, self.al_red)
         self.despertar = threading.Event()
+        self.alerta_hasta = -1e9  # tras un evento de la wifi se revisa al ritmo corto un rato
         self.ultimo_crash = self.ultimo_resumen = -1e9
         self.fallas = 0
         self.desde_falla = 0.0  # inicio de la falla actual (tiempo de recuperacion)
@@ -58,6 +62,18 @@ class Controlador:
             self.vigia_bt.revisar_ya()
         self.episodios.kernel(equipo, linea)
         self.despertar.set()  # revisar ya, sin esperar el intervalo
+
+    def al_red(self, tipo: str, linea: str) -> None:
+        """Desde el hilo de nl80211: una falla de la wifi despierta al bucle en el mismo segundo."""
+        if tipo == "falla":
+            log.warning("evento de la wifi en vivo: %s", linea)
+            self.alerta_hasta = time.monotonic() + ALERTA
+            self.despertar.set()
+
+    def intervalo(self) -> float:
+        """Ritmo corto con sospecha, falla o evento reciente; largo con todo sano (menos CPU y energia)."""
+        alerta = self.fallas > 0 or time.monotonic() < self.alerta_hasta or self.vigia_bt.sospecha
+        return self.cfg.intervalo if alerta else max(self.cfg.intervalo, self.cfg.intervalo_estable)
 
     def _sano(self) -> None:
         if self.fallas:

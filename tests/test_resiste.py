@@ -13,7 +13,17 @@ from radio_rtw88.sistema import Resultado
 
 C = Config()
 PAQUETE = Path(__file__).parent.parent / "src" / "radio_rtw88"
-CON_SISTEMA = ("sondas", "bluetooth", "acciones", "red", "perfiles", "escenario", "ajustes", "itinerancia")
+CON_SISTEMA = (
+    "sondas",
+    "bluetooth",
+    "acciones",
+    "red",
+    "perfiles",
+    "escenario",
+    "ajustes",
+    "itinerancia",
+    "escucha_red",
+)
 
 
 def _publicas(arbol: ast.Module) -> list[ast.FunctionDef]:

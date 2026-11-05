@@ -22,7 +22,10 @@ class Config:
     modulo: str = "rtw88_8821ce"  # el modulo del chip; modprobe -r baja tambien rtw88_pci y rtw88_core
     puerta: str = "192.0.2.1"  # tu puerta de enlace (valor de documentacion)
     internet: tuple[str, ...] = ("1.1.1.1", "8.8.8.8", "9.9.9.9")
-    intervalo: float = 15.0  # segundos entre revisiones normales
+    intervalo: float = 15.0  # segundos entre revisiones con sospecha o falla (y tras un evento del kernel)
+    intervalo_estable: float = 30.0  # segundos entre revisiones con todo sano: los eventos avisan al instante
+    umbral_senal: int = -75  # dBm: el kernel avisa al cruzarlo (cqm)
+    histeresis_senal: int = 4  # dB alrededor del umbral antes de volver a avisar
     confirmar: int = 2  # revisiones fallidas seguidas antes de actuar (salvo crash de firmware)
     max_resets_hora: int = 4  # tope de acciones sobre el hardware por hora (evita tormentas)
     espera_ap: float = 60.0  # con el punto de acceso ausente, cada cuanto reintentar asociar
@@ -48,6 +51,9 @@ class Config:
 # Limites sanos: fuera de ellos el valor se ignora (p. ej. un intervalo >= WatchdogSec mataria al demonio)
 RANGOS: dict[str, tuple[float, float]] = {
     "intervalo": (5, 120),
+    "intervalo_estable": (5, 120),
+    "umbral_senal": (-95, -40),
+    "histeresis_senal": (1, 15),
     "confirmar": (1, 10),
     "max_resets_hora": (0, 20),
     "espera_ap": (10, 3600),

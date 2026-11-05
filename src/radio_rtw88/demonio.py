@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import sys
 
-from . import intentos, servicio
+from . import escucha_red, intentos, servicio
 from .config import Config
 from .principal import Controlador
 from .sistema import Sistema
@@ -21,6 +21,8 @@ MAX_ERRORES = 20  # vueltas seguidas con excepcion antes de salir y dejar que sy
 def bucle(c: Controlador) -> int:
     intentos.latido = lambda: servicio.notificar("WATCHDOG=1")
     c.escucha.iniciar()
+    intentos.seguro("escucha de la wifi", c.escucha_red.iniciar, lambda: None)
+    escucha_red.armar_umbral(c.s, c.cfg)
     servicio.notificar("READY=1")
     errores = 0
     while errores < MAX_ERRORES:
@@ -34,7 +36,7 @@ def bucle(c: Controlador) -> int:
             estado = intentos.seguro("respaldo minimo", c.respaldo_minimo, lambda: "error interno")
         c.registro.guardar()
         servicio.notificar(f"WATCHDOG=1\nSTATUS=wifi {estado}, fallas {c.fallas}, modo {c.cfg.modo}")
-        c.despertar.wait(c.cfg.intervalo)
+        c.despertar.wait(c.intervalo())
         c.despertar.clear()
     log.critical("demasiadas vueltas fallidas: salgo para que systemd me reinicie")
     return 1
