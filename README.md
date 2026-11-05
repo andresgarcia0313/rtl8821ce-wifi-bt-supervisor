@@ -94,10 +94,14 @@ Un servicio de systemd en Python 3.12+, solo con la biblioteca estándar, en esp
 | Radio apagada y suspensión | respeta el apagado a propósito (rfkill), revisa al despertar y reaplica ajustes si el driver se recarga |
 | Bitácora clara | cada evento con su frase sencilla; `controlador-radio bitacora` |
 | Bluetooth | señal de cada enlace vigilada; conexión rápida solo en rendimiento |
+| Modo baja latencia (2.3.0) | con un juego o una videollamada en curso la wifi no reposa aunque esté en batería, como el modo de Android |
+| Informe exportable (2.3.0) | `controlador-radio informe`: evidencia, bitácora legible, ajustes y medida en un solo archivo |
 
 **Medido el 2026-11-04 con la versión 2.2.0:**
 - En 2,4 GHz (a -40 dBm), la red de la casa perdió el 7 % de los paquetes, con una demora media de 28 ms y una máxima de 426 ms. En 5 GHz perdió el 0 %. El controlador volvió solo a 5 GHz a los 37 s y el clúster siguió `Ready`.
 - El router de la casa tiene ratos en que deja de contestar el ping: 46 a 68 % de pings perdidos en tramos de 90 s a 10 min, mientras internet respondía. La consulta ARP siguió viendo el router, así que el controlador no lo tomó como falla.
+- Con 119 a 133 Mbit/s moviéndose entre dos equipos de la casa, la demora al router pasó de 4,1 ms en reposo a 5,2 ms subiendo y 7,2 ms bajando, sin pérdida. No hay hinchazón de colas: mac80211 trae FQ-CoDel y el ping va marcado como voz.
+- La guarda térmica actuó en real: con el portátil a más de 90 grados bajo carga puso el tope de 15 dBm y volvió a la potencia máxima 41 s después.
 - El controlador usa unos 12 MB de memoria y el 0,3 % de un núcleo (2,1 s de CPU en 11 min).
 
 **Errores frecuentes de otros que se evitan:** reiniciar la tarjeta ante cualquier falta de internet, vigilar con un solo destino, reparar en bucle, itinerancia agresiva, escaneos frecuentes, creer que los ajustes de energía lo curan todo, cortar el puerto USB del Bluetooth, restauraciones a ciegas y ping sin elegir la interfaz. Detalle en `docs/adr/0004-errores-por-funcion-ajustes-e-itinerancia.md`.
@@ -156,6 +160,7 @@ controlador-radio estado           # contadores, última medida y Bluetooth
 controlador-radio eventos 20       # bitácora: por qué falló, en qué escenario, evidencia
 controlador-radio bitacora 30      # la bitácora en frases sencillas
 controlador-radio ajustes          # opciones del driver al estilo Windows y su valor
+controlador-radio informe          # un archivo con todo para revisar o compartir un defecto
 controlador-radio bt estado|reparar
 ```
 
@@ -171,6 +176,7 @@ MIT. Ver `LICENSE`.
 
 | Versión | Fecha | Cambio |
 |---|---|---|
+| 2.3.0 | 2026-11-04 | Modo baja latencia automático e informe de diagnóstico exportable |
 | 2.2.0 | 2026-11-04 | Aviso instantáneo, banda 5/2,4 GHz, convivencia con el Bluetooth, perfiles de energía, potencia con guarda térmica, canal congestionado, prioridad del tráfico, respeto del apagado y suspensión, bitácora clara |
 | 2.1.0 | 2026-11-04 | Manejo de errores con alternativa en cada función, ARP al router, ajustes vigilados (ahorro de la wifi, suspensión del Bluetooth), itinerancia mínima con liberación automática, aviso `OnFailure` |
 | 2.0.0 | 2026-11-03 | Adaptado a rtw88 y Bluetooth Realtek USB: sonda del chip por MMIO, escalera del Bluetooth, respaldo por cable, vigía del cable, ajuste de TLP |
