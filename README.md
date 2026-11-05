@@ -79,6 +79,22 @@ Un servicio de systemd en Python 3.12+, solo con la biblioteca estándar, en esp
 | Encender por la red (WoWLAN) | no aplica a un servidor siempre encendido |
 | Deshabilitar y habilitar el adaptador | la escalera de remedios |
 
+**Versión 2.2.0: radio adaptativa** (decisiones en `docs/adr/0005-energia-banda-canal-y-prioridad.md`):
+
+| Función | Qué hace |
+|---|---|
+| Aviso instantáneo | `iw event` (nl80211) avisa de desconexión, pérdida de balizas, paquetes sin confirmar y señal bajo -75 dBm en el mismo segundo; con todo sano la revisión baja a cada 20 a 30 s |
+| Banda | 5 GHz primero; 2,4 GHz solo si 5 GHz queda bajo -75 dBm un minuto y 2,4 GHz gana 6 dB; vuelve con -67 dBm (umbrales de Android e iwd) |
+| Convivencia en 2,4 GHz | el Bluetooth aparta los canales de la wifi con el comando HCI estándar de clasificación de canales (AFH) |
+| Perfiles de energía | rendimiento con cargador; equilibrado y ahorro en batería, con ahorro de la wifi que reposa tras 60 s sin tráfico y despierta en el acto |
+| Potencia | la máxima permitida; tope temporal por SAR solo si el portátil pasa de 90 grados |
+| Canal congestionado | 5 pings por minuto distinguen distancia, congestión y canal limpio; con congestión, RTS/CTS |
+| Prioridad del tráfico | marcas DSCP: DNS, ping, SSH y juegos a la cola de voz; videollamadas y control de Tailscale a la de video |
+| Sobrecarga | más peso de CPU y disco para el servicio y dos confirmaciones más si la CPU está saturada |
+| Radio apagada y suspensión | respeta el apagado a propósito (rfkill), revisa al despertar y reaplica ajustes si el driver se recarga |
+| Bitácora clara | cada evento con su frase sencilla; `controlador-radio bitacora` |
+| Bluetooth | señal de cada enlace vigilada; conexión rápida solo en rendimiento |
+
 **Errores frecuentes de otros que se evitan:** reiniciar la tarjeta ante cualquier falta de internet, vigilar con un solo destino, reparar en bucle, itinerancia agresiva, escaneos frecuentes, creer que los ajustes de energía lo curan todo, cortar el puerto USB del Bluetooth, restauraciones a ciegas y ping sin elegir la interfaz. Detalle en `docs/adr/0004-errores-por-funcion-ajustes-e-itinerancia.md`.
 
 Protecciones: tope de 4 acciones de hardware por hora guardado en disco; tras una falla del proveedor, 10 min solo reasociar; watchdog de systemd de 300 s; `MemoryMax=150M`, `CPUQuota=30%` y 8 capacidades; cada vuelta en try/except con un respaldo mínimo; cerrojo `flock`; aviso si systemd deja de reiniciarlo (`OnFailure`). Los supervisores anteriores quedan de reserva con `ExecCondition`: actúan solo si este no está activo o está en `observar`. No arma pánicos ni reinicios automáticos del equipo.
@@ -133,6 +149,8 @@ Respaldo por cable (opcional): `despliegue/80-anclaje-usb-respaldo.conf` en `/et
 controlador-radio diagnostico      # mide cada capa y dice la causa, sin tocar nada
 controlador-radio estado           # contadores, última medida y Bluetooth
 controlador-radio eventos 20       # bitácora: por qué falló, en qué escenario, evidencia
+controlador-radio bitacora 30      # la bitácora en frases sencillas
+controlador-radio ajustes          # opciones del driver al estilo Windows y su valor
 controlador-radio bt estado|reparar
 ```
 
@@ -148,5 +166,6 @@ MIT. Ver `LICENSE`.
 
 | Versión | Fecha | Cambio |
 |---|---|---|
+| 2.2.0 | 2026-11-04 | Aviso instantáneo, banda 5/2,4 GHz, convivencia con el Bluetooth, perfiles de energía, potencia con guarda térmica, canal congestionado, prioridad del tráfico, respeto del apagado y suspensión, bitácora clara |
 | 2.1.0 | 2026-11-04 | Manejo de errores con alternativa en cada función, ARP al router, ajustes vigilados (ahorro de la wifi, suspensión del Bluetooth), itinerancia mínima con liberación automática, aviso `OnFailure` |
 | 2.0.0 | 2026-11-03 | Adaptado a rtw88 y Bluetooth Realtek USB: sonda del chip por MMIO, escalera del Bluetooth, respaldo por cable, vigía del cable, ajuste de TLP |

@@ -24,6 +24,13 @@ Esta guía reúne las funciones y características del supervisor de wifi y Blue
 | Itinerancia mínima: punto de acceso fijado con liberación automática | Quitar el escaneo de fondo, que causaba picos de demora | `itinerancia.py` |
 | Servicio de systemd con watchdog, límites de memoria y CPU (procesador), mínimas capacidades y aviso si se rinde | Que el supervisor nunca cargue el equipo y que alguien se entere si cae | `controlador-radio.service`, `controlador-radio-caido.service` |
 | Modo observar | Estrenar cambios sin tocar nada | `config.py` |
+| Aviso instantáneo por eventos del kernel y ritmo adaptativo | Detectar en un segundo y gastar menos CPU con todo sano | `escucha_red.py` |
+| Elección de banda con 5 GHz primero | Más alcance lejos del router sin perder la velocidad de 5 GHz | `banda.py` |
+| Perfiles de energía con ahorro adaptativo | Ahorrar en batería sin perder paquetes | `energia.py` |
+| Potencia máxima con guarda térmica | Mejor señal sin recalentar el equipo | `energia.py` |
+| Detector de congestión con RTS/CTS | Aguantar un canal congestionado | `canal.py` |
+| Prioridad del tráfico por DSCP | Juegos, videollamadas y control primero | `prioridad.nft` |
+| Bitácora en frases sencillas | Entender cada evento sin herramientas | `relato.py` |
 | Supervisores anteriores de reserva (`ExecCondition`) | Que haya alguien vigilando si este supervisor no corre | `reserva.conf` |
 
 ## 2. Pasos para otro adaptador
@@ -74,3 +81,4 @@ Costo del supervisor: unos 12 MB de memoria y menos del 1 % de un núcleo, con u
 | Versión | Fecha | Autor | Descripción del cambio |
 |---|---|---|---|
 | 1.0 | 2026-11-04 | Andrés García | Primera versión, a partir del supervisor 2.1.0 |
+| 1.1 | 2026-11-04 | Andrés García | Funciones de la versión 2.2.0 |
