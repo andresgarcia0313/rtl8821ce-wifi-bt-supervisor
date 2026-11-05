@@ -11,6 +11,7 @@ from . import servicio, sondas
 from .acciones import reasociar
 from .ajustes import Ajustes
 from .banda import Banda
+from .canal import Canal
 from .config import Config
 from .diagnostico import SIN_TOCAR_HARDWARE, Estado, diagnosticar
 from .energia import Energia
@@ -51,6 +52,7 @@ class Controlador:
         )
         self.banda = Banda(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("wifi", tipo, **d))
         self.energia = Energia(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("radio", tipo, **d))
+        self.canal = Canal(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("wifi", tipo, **d))
         self.escucha_red = EscuchaRed(cfg, self.al_red)
         self.despertar = threading.Event()
         self.alerta_hasta = -1e9  # tras un evento de la wifi se revisa al ritmo corto un rato
@@ -112,6 +114,7 @@ class Controlador:
         self.registro.causa(estado, m)
         self.itinerancia.vigilar(estado)  # fija el punto de acceso sano o lo suelta si dejo de verse
         self.banda.vigilar(estado, m)  # 5 GHz primero; 2,4 GHz si lejos rinde mejor
+        self.canal.vigilar(m)  # congestion: RTS/CTS mientras dure
         if estado is Estado.SANO:
             self._sano()
             self._respaldo(estado)
