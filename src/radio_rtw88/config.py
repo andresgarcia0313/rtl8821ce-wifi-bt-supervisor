@@ -43,6 +43,11 @@ class Config:
     bt_usb: str = "0bda:b00a"  # vendedor:producto, para hallarlo en USB si el hci desaparece
     bt_usb_profundo: bool = False  # authorized=0/1 y usbreset: solo tras probar que el equipo vuelve
     bt_reponer: tuple[str, ...] = ()  # unidades a arrancar tras reparar el Bluetooth (NAP, visibilidad)
+    # Energia: "auto" (cargador: rendimiento; bateria: equilibrado; bateria baja: ahorro) o un perfil fijo
+    perfil_energia: str = "auto"
+    temp_max: float = 90.0  # grados: por encima se pone un tope de potencia temporal
+    temp_ok: float = 78.0  # grados: por debajo se vuelve a la potencia maxima
+    potencia_calor: int = 15  # dBm del tope por calor
     ajustes: bool = True  # vigilar ahorro de energia de la wifi y suspension USB del Bluetooth
     # Fijar el punto de acceso (sin escaneos de fondo: "itinerancia minima" de Windows) cuando la red tiene
     # uno solo; se suelta solo si deja de verse. Reconecta la wifi unos segundos: solo con el cable util.
@@ -53,6 +58,9 @@ class Config:
 RANGOS: dict[str, tuple[float, float]] = {
     "intervalo": (5, 120),
     "intervalo_estable": (5, 120),
+    "temp_max": (60, 105),
+    "temp_ok": (40, 100),
+    "potencia_calor": (5, 20),
     "umbral_senal": (-95, -40),
     "histeresis_senal": (1, 15),
     "confirmar": (1, 10),
@@ -69,6 +77,8 @@ MODOS = ("actuar", "observar")
 def _valido(clave: str, valor: object) -> bool:
     if clave == "modo":
         return valor in MODOS
+    if clave == "perfil_energia":
+        return valor in ("auto", "rendimiento", "equilibrado", "ahorro")
     minimo, maximo = RANGOS.get(clave, (float("-inf"), float("inf")))
     return not isinstance(valor, int | float) or minimo <= valor <= maximo
 

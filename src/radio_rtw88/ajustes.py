@@ -1,8 +1,8 @@
 """Ajustes del driver vigilados, como la pestana "Opciones avanzadas" del driver Realtek en Windows.
 
-Ahorro de energia de la wifi apagado (otro programa, como TLP, puede volver a encenderlo) y Bluetooth
-USB siempre encendido (equivale a quitar "Permitir que el equipo apague este dispositivo"): la
+Bluetooth USB siempre encendido (equivale a quitar "Permitir que el equipo apague este dispositivo"): la
 suspension automatica de btusb es una causa conocida de que el Bluetooth Realtek deje de responder.
+El ahorro de energia de la wifi lo decide energia.Energia segun el perfil; aqui solo se muestra.
 """
 
 from __future__ import annotations
@@ -27,11 +27,6 @@ def ahorro_wifi(s: Sistema, cfg: Config) -> str | None:
     r = s.correr(["iw", "dev", cfg.iface, "get", "power_save"], tope=5)
     hallado = re.search(r"Power save:\s*(\w+)", r.salida) if r.ok else None
     return hallado.group(1) if hallado else None
-
-
-@resiste(valor(False))
-def apagar_ahorro_wifi(s: Sistema, cfg: Config) -> bool:
-    return s.correr(["iw", "dev", cfg.iface, "set", "power_save", "off"], tope=5).ok
 
 
 @resiste(valor(None))
@@ -82,9 +77,7 @@ class Ajustes:
         if not self.cfg.ajustes or self.reloj() - self.ultimo < CADA_AJUSTES:
             return []
         self.ultimo = self.reloj()
-        desviados = []
-        if ahorro_wifi(self.s, self.cfg) == "on":
-            desviados.append("ahorro_energia_wifi")
+        desviados = []  # el ahorro de la wifi lo decide energia.Energia segun el perfil
         if self.cfg.bluetooth and energia_bt(self.s, self.cfg) == "auto":
             desviados.append("bluetooth_suspension_usb")
         for nombre in desviados:
@@ -95,7 +88,5 @@ class Ajustes:
 
     @resiste(valor(False))
     def corregir(self, nombre: str) -> bool:
-        if nombre == "ahorro_energia_wifi":
-            return apagar_ahorro_wifi(self.s, self.cfg)
         ruta = ruta_energia_bt(self.s, self.cfg)
         return ruta is not None and self.s.escribir(ruta, "on")

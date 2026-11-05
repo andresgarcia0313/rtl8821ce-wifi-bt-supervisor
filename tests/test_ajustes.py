@@ -37,24 +37,24 @@ def vigia(modo: str = "actuar") -> tuple[ajustes.Ajustes, Equipo, list[dict[str,
     return a, s, notas
 
 
-def test_corrige_el_ahorro_de_la_wifi_y_la_suspension_del_bluetooth() -> None:
+def test_corrige_la_suspension_del_bluetooth_y_deja_el_ahorro_a_energia() -> None:
     a, s, notas = vigia()
-    assert a.vigilar() == ["ahorro_energia_wifi", "bluetooth_suspension_usb"]
-    assert s.ahorro == "off" and s.archivos[ENERGIA] == "on"
+    assert a.vigilar() == ["bluetooth_suspension_usb"]
+    assert s.archivos[ENERGIA] == "on" and s.ahorro == "on"  # el ahorro lo decide el perfil de energia
     assert all(n["corregido"] for n in notas)
 
 
 def test_en_modo_observar_solo_anota() -> None:
     a, s, notas = vigia("observar")
     a.vigilar()
-    assert s.ahorro == "on" and s.archivos[ENERGIA] == "auto\n"
-    assert [n["corregido"] for n in notas] == [False, False]
+    assert s.archivos[ENERGIA] == "auto\n"
+    assert [n["corregido"] for n in notas] == [False]
 
 
 def test_revisa_cada_cinco_minutos_no_en_cada_vuelta() -> None:
     a, s, _ = vigia()
     a.vigilar()
-    s.ahorro = "on"
+    s.archivos[ENERGIA] = "auto\n"
     assert a.vigilar() == []
 
 

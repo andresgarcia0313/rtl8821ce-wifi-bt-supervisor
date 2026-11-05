@@ -37,3 +37,9 @@ ajustes = true
 fijar_bssid = false
 # Perfil de la misma casa en 2,4 GHz: se usa solo si lejos del router rinde mejor que 5 GHz (vacio: no).
 conexion_2g = ""
+# Energia: "auto" (cargador: rendimiento; bateria: equilibrado; bateria baja: ahorro) o un perfil fijo.
+perfil_energia = "auto"
+# Tope de potencia temporal solo si el portatil pasa de temp_max grados; se quita bajo temp_ok.
+temp_max = 90.0
+temp_ok = 78.0
+potencia_calor = 15

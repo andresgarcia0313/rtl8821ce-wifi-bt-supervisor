@@ -12,6 +12,7 @@ from .ajustes import Ajustes
 from .banda import Banda
 from .config import Config
 from .diagnostico import SIN_TOCAR_HARDWARE, Estado, diagnosticar
+from .energia import Energia
 from .episodios import Episodios
 from .escucha_red import EscuchaRed
 from .intentos import seguro
@@ -47,6 +48,7 @@ class Controlador:
             s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("wifi", tipo, **d)
         )
         self.banda = Banda(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("wifi", tipo, **d))
+        self.energia = Energia(s, cfg, lambda tipo, **d: self.episodios.bitacora.anotar("radio", tipo, **d))
         self.escucha_red = EscuchaRed(cfg, self.al_red)
         self.despertar = threading.Event()
         self.alerta_hasta = -1e9  # tras un evento de la wifi se revisa al ritmo corto un rato
@@ -133,6 +135,7 @@ class Controlador:
         seguro("vigia del bluetooth", self.vigia_bt.vigilar, lambda: None)
         seguro("vigia del cable", self.vigia_cable.vigilar, lambda: None)
         seguro("ajustes del driver", self.ajustes.vigilar, list)
+        seguro("energia", self.energia.vigilar, lambda: None)
 
     def respaldo_minimo(self) -> str:
         """El except de una vuelta: si la wifi no cursa trafico, reasociar sin mas analisis."""
