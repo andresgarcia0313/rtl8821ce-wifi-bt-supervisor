@@ -15,6 +15,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from . import relato
+
 log = logging.getLogger(__name__)
 TOPE_BYTES = 5 * 1024 * 1024  # al pasarlo, eventos.jsonl rota a eventos.jsonl.1
 
@@ -26,7 +28,8 @@ class Bitacora:
 
     def anotar(self, equipo: str, tipo: str, **datos: Any) -> dict[str, Any]:
         evento = {"hora": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "equipo": equipo, "tipo": tipo, **datos}
-        log.info("evento %s/%s: %s", equipo, tipo, datos.get("causa") or datos.get("detalle") or "")
+        evento["texto"] = relato.describir(evento)  # la frase sencilla, para leerla sin herramientas
+        log.info("evento %s/%s: %s", equipo, tipo, evento["texto"])
         try:
             with self.cerrojo:
                 self.ruta.parent.mkdir(parents=True, exist_ok=True)

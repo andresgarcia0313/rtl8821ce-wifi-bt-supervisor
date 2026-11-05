@@ -7,6 +7,7 @@ avisar-caida       aviso critico de que systemd dejo de reiniciar el demonio (On
 soltar-bssid       quita el punto de acceso fijado en el perfil (lo usa restaurar.sh)
 ajustes            opciones del driver al estilo Windows y su valor actual
 estado             contadores acumulados, ultima medida y estado del Bluetooth
+bitacora [n]       ultimos n eventos en frases sencillas
 eventos [n]        ultimos n eventos de la bitacora (por que fallo, en que escenario, evidencia)
 evidencia          guarda ahora los registros completos de wifi y Bluetooth (para revisar a mano)
 reparar            una vuelta completa: diagnostica y aplica el remedio si hace falta
@@ -25,7 +26,7 @@ import sys
 import time
 from dataclasses import asdict, replace
 
-from . import acciones, ajustes, bluetooth, cerrojo, demonio, evidencia, principal, servicio, sondas
+from . import acciones, ajustes, bluetooth, cerrojo, demonio, evidencia, principal, relato, servicio, sondas
 from .config import Config, cargar
 from .diagnostico import diagnosticar
 from .eventos import Bitacora
@@ -50,8 +51,18 @@ def _imprimir(datos: object) -> None:
     print(json.dumps(datos, indent=1, ensure_ascii=False, sort_keys=True))
 
 
-def _mantenimiento(orden: str, s: SistemaReal, cfg: Config) -> int | None:
-    """Ordenes de systemd y de restaurar.sh, y la lista de ajustes; None si la orden no es de aqui."""
+def _mantenimiento(orden: str, args: list[str], s: SistemaReal, cfg: Config) -> int | None:
+    """Ordenes de systemd y de restaurar.sh, ajustes y bitacora; None si la orden no es de aqui."""
+    if orden == "bitacora":
+        n = int(args[1]) if len(args) == 2 and args[1].isdigit() else 30
+        for e in Bitacora(cfg.estado_dir).ultimos(n):
+            print(relato.linea(e))
+        return 0
+    if orden == "eventos":
+        n = int(args[1]) if len(args) == 2 and args[1].isdigit() else 20
+        for e in Bitacora(cfg.estado_dir).ultimos(n):
+            print(json.dumps(e, ensure_ascii=False))
+        return 0
     if orden == "avisar-caida":
         if cfg.fijar_bssid:  # sin el demonio nadie soltaria el punto de acceso si el router cambia
             Itinerancia(s, cfg).soltar()
@@ -79,16 +90,11 @@ def main(args: list[str]) -> int:
         m = sondas.medir(s, cfg)
         _imprimir(asdict(m) | {"causa": str(diagnosticar(m))})
         return 0
-    hecho = _mantenimiento(orden, s, cfg)
+    hecho = _mantenimiento(orden, args, s, cfg)
     if hecho is not None:
         return hecho
     if orden == "estado":
         _imprimir(Registro(cfg.estado_dir).datos | {"bluetooth_responde": bluetooth.responde(s, cfg)})
-        return 0
-    if orden == "eventos":
-        n = int(args[1]) if len(args) == 2 and args[1].isdigit() else 20
-        for e in Bitacora(cfg.estado_dir).ultimos(n):
-            print(json.dumps(e, ensure_ascii=False))
         return 0
     if orden == "evidencia":
         print(evidencia.capturar(s, cfg, "manual") or "no se pudo guardar la evidencia")
