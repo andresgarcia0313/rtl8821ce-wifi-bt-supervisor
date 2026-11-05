@@ -36,6 +36,7 @@ def test_clasifica_distancia_congestion_y_limpio() -> None:
     assert canal.clasificar(-80, (20.0, 40.0, 300.0)) == "lejos"
     assert canal.clasificar(-50, (0.0, 4.0, 120.0)) == "congestionado"
     assert canal.clasificar(-50, (20.0, 4.0, 9.0)) == "congestionado"
+    assert canal.clasificar(-50, (40.0, 5.0, 7.0), arp_ok=True) == "limpio"  # el router ignora pings
     assert canal.clasificar(-50, (0.0, 4.0, 9.0)) == "limpio"
 
 
@@ -68,3 +69,11 @@ def test_mide_una_vez_por_minuto() -> None:
     reloj.t += 10
     c.vigilar(medida(-50))
     assert sum(o[0] == "ping" for o in s.ordenes) == 1
+
+
+def test_router_que_ignora_pings_pero_contesta_arp_no_enciende_rts() -> None:
+    c, s, _, notas, aire = nuevo()
+    aire["ping"] = ping_resumen(40, 5.0, 7.0)
+    s.al_correr["arping"] = lambda _o: Resultado(0)
+    c.vigilar(medida(-47))
+    assert not c.rts and notas == []

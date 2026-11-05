@@ -82,8 +82,10 @@ def poner_tope(s: Sistema, cfg: Config, dbm: int | None) -> bool:
 
 @resiste(valor(False))
 def conexion_rapida_bt(s: Sistema, cfg: Config, encendida: bool) -> bool:
-    orden = ["btmgmt", "-i", cfg.bt_hci, "fast-conn", "on" if encendida else "off"]
-    return s.correr(orden, tope=10).ok
+    """Escucha de pagina cada 160 ms (rapida) o cada 1,28 s (la del estandar), con ventana de 11,25 ms.
+    Se fija por HCI con hciconfig: btmgmt se colgaba hasta su tope en el equipo."""
+    parametros = "18:256" if encendida else "18:2048"  # ventana:intervalo en ranuras de 0,625 ms
+    return s.correr(["hciconfig", cfg.bt_hci, "pageparms", parametros], tope=5).ok
 
 
 @resiste(valor(None))

@@ -64,14 +64,14 @@ def test_con_cargador_rinde_al_maximo_sin_ahorro_y_con_bluetooth_rapido() -> Non
     s.ahorro = "on"  # otro programa lo encendio
     e.vigilar()
     assert s.ahorro == "off" and notas == []  # el perfil del arranque no llena la bitacora
-    assert s.ordeno("btmgmt", "-i", C.bt_hci, "fast-conn", "on")
+    assert s.ordeno("hciconfig", C.bt_hci, "pageparms", "18:256")
 
 
 def test_en_bateria_equilibrado_reposa_tras_un_minuto_quieto_y_despierta_con_trafico() -> None:
     e, s, reloj, _ = nuevo()
     s.archivos["/sys/class/power_supply/AC/online"] = "0\n"
     e.vigilar()
-    assert s.ordeno("btmgmt", "-i", C.bt_hci, "fast-conn", "off")
+    assert s.ordeno("hciconfig", C.bt_hci, "pageparms", "18:2048")
     for _ in range(5):  # 50 s con 5 paquetes por segundo: aun no reposa
         reloj.t += 10
         s.trafico(50)
@@ -156,7 +156,7 @@ def test_en_modo_observar_no_toca_nada() -> None:
     e, s, _, _ = nuevo(modo="observar")
     s.ahorro = "on"
     e.vigilar()
-    assert s.ahorro == "on" and not s.ordeno("btmgmt")
+    assert s.ahorro == "on" and not s.ordeno("hciconfig")
 
 
 def test_la_quietud_se_cuenta_de_nuevo_tras_trafico_intermedio() -> None:

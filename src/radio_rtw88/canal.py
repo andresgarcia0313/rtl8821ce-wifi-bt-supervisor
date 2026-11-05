@@ -15,6 +15,7 @@ import re
 import time
 from collections.abc import Callable
 
+from . import sondas
 from .config import Config
 from .intentos import resiste, valor
 from .sistema import Sistema
@@ -42,11 +43,13 @@ def muestra(s: Sistema, cfg: Config) -> tuple[float, float, float] | None:
 
 
 @resiste(valor("limpio"))
-def clasificar(senal: int | None, datos: tuple[float, float, float]) -> str:
+def clasificar(senal: int | None, datos: tuple[float, float, float], arp_ok: bool = False) -> str:
+    """Una perdida sin demora que el router si contesta por ARP es del router (ignora pings a ratos), no
+    del aire: solo cuenta como congestion si la demora sube o si tampoco contesta ARP."""
     perdida, media, maxima = datos
     if senal is not None and senal < LEJOS:
         return "lejos"
-    if perdida > 0 or maxima > DEMORA_MAX or media > DEMORA_MEDIA:
+    if maxima > DEMORA_MAX or media > DEMORA_MEDIA or (perdida > 0 and not arp_ok):
         return "congestionado"
     return "limpio"
 
@@ -80,7 +83,8 @@ class Canal:
         datos = muestra(self.s, self.cfg)
         if datos is None:
             return
-        nuevo = clasificar(m.senal, datos)
+        arp_ok = datos[0] > 0 and sondas.arp(self.s, self.cfg, self.cfg.puerta)
+        nuevo = clasificar(m.senal, datos, arp_ok)
         if nuevo != self.estado:
             texto = f"canal {self.estado} -> {nuevo} (senal {m.senal} dBm, perdida {datos[0]:.0f} %, "
             texto += f"demora media {datos[1]:.0f} ms, maxima {datos[2]:.0f} ms)"
