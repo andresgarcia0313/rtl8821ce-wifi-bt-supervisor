@@ -7,7 +7,7 @@ import re
 import threading
 import time
 
-from . import servicio, sondas
+from . import escucha_red, servicio, sondas
 from .acciones import reasociar
 from .ajustes import Ajustes
 from .banda import Banda
@@ -56,6 +56,7 @@ class Controlador:
         self.escucha_red = EscuchaRed(cfg, self.al_red)
         self.despertar = threading.Event()
         self.alerta_hasta = -1e9  # tras un evento de la wifi se revisa al ritmo corto un rato
+        self.phy: str | None = None  # cambia cada vez que el driver se recarga
         self.ultimo_crash = self.ultimo_resumen = -1e9
         self.fallas = 0
         self.desde_falla = 0.0  # inicio de la falla actual (tiempo de recuperacion)
@@ -84,6 +85,18 @@ class Controlador:
         presion = re.search(r"some avg10=([\d.]+)", crudo)
         return self.cfg.confirmar + (2 if presion and float(presion.group(1)) >= PRESION_ALTA else 0)
 
+    def _si_cambio_la_radio(self) -> None:
+        """Tras recargar el driver o reiniciar el bus, el chip pierde lo que se le habia aplicado: el umbral
+        de senal, el tope de potencia, RTS/CTS, el ahorro y el mapa del Bluetooth. Se vuelve a aplicar."""
+        phy = (self.s.leer(f"/sys/class/net/{self.cfg.iface}/phy80211/name") or "").strip() or None
+        if phy and self.phy and phy != self.phy:
+            log.info("la radio se recargo (%s -> %s): vuelvo a aplicar sus ajustes", self.phy, phy)
+            escucha_red.armar_umbral(self.s, self.cfg)
+            self.energia.radio_nueva()
+            self.canal.rts = False  # el driver arranca sin RTS/CTS
+            self.banda.frecuencia_afh = -1
+        self.phy = phy or self.phy
+
     def al_despertar(self) -> None:
         """El equipo salio de suspension: revisar wifi y Bluetooth ya, al ritmo corto un rato."""
         log.info("el equipo desperto de una suspension: reviso ya")
@@ -108,6 +121,7 @@ class Controlador:
     def vuelta(self) -> Estado:
         self.episodios.atender_kernel()
         m = sondas.medir(self.s, self.cfg)
+        seguro("radio recargada", self._si_cambio_la_radio, lambda: None)
         crash = time.monotonic() - self.ultimo_crash < VENTANA_CRASH
         estado = diagnosticar(m, crash)
         estado = seguro("respaldo: ajustar", lambda: self.respaldo.ajustar(estado), lambda: estado)

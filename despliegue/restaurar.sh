@@ -7,6 +7,8 @@ set -euo pipefail
 systemctl disable --now controlador-radio.service 2>/dev/null || true
 # el punto de acceso fijado queda en el perfil de NetworkManager: sin el controlador nadie lo soltaria
 grep -qs '^fijar_bssid = true' /etc/controlador-radio/config.toml && /usr/local/bin/controlador-radio soltar-bssid || true
+# la radio vuelve a como la deja el driver: sin ahorro, sin RTS/CTS, sin tope de potencia, Bluetooth normal
+/usr/local/bin/controlador-radio restablecer-radio || true
 rm -f /etc/systemd/system/controlador-radio.service /etc/systemd/system/controlador-radio-caido.service \
   /etc/udev/rules.d/81-bluetooth-sin-suspension.rules /usr/local/bin/controlador-radio \
   /usr/lib/systemd/system-sleep/controlador-radio-despertar

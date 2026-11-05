@@ -5,6 +5,7 @@ diagnostico        mide cada capa y dice la causa, sin tocar nada
 avisar-caida       aviso critico de que systemd dejo de reiniciar el demonio (OnFailure); suelta el
                    punto de acceso fijado
 soltar-bssid       quita el punto de acceso fijado en el perfil (lo usa restaurar.sh)
+restablecer-radio  deja la radio como la deja el driver: sin ahorro, sin RTS, sin tope, Bluetooth normal
 ajustes            opciones del driver al estilo Windows y su valor actual
 estado             contadores acumulados, ultima medida y estado del Bluetooth
 bitacora [n]       ultimos n eventos en frases sencillas
@@ -26,7 +27,21 @@ import sys
 import time
 from dataclasses import asdict, replace
 
-from . import acciones, ajustes, bluetooth, cerrojo, demonio, evidencia, principal, relato, servicio, sondas
+from . import (
+    acciones,
+    ajustes,
+    banda,
+    bluetooth,
+    canal,
+    cerrojo,
+    demonio,
+    energia,
+    evidencia,
+    principal,
+    relato,
+    servicio,
+    sondas,
+)
 from .config import Config, cargar
 from .diagnostico import diagnosticar
 from .eventos import Bitacora
@@ -71,6 +86,15 @@ def _mantenimiento(orden: str, args: list[str], s: SistemaReal, cfg: Config) -> 
             "critical", "systemd dejo de reiniciar el controlador de radio; siguen los de reserva"
         )
         return 0
+    if orden == "restablecer-radio":
+        pasos = [
+            energia.poner_ahorro(s, cfg, False),
+            canal.poner_rts(s, cfg, False),
+            energia.poner_tope(s, cfg, None),
+            energia.conexion_rapida_bt(s, cfg, True),
+            banda.avisar_canal_al_bluetooth(s, cfg, None),
+        ]
+        return 0 if all(pasos) else 1
     if orden == "soltar-bssid":
         return 0 if Itinerancia(s, cfg).soltar() else 1
     if orden == "ajustes":

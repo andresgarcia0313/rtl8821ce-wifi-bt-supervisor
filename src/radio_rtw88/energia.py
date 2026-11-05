@@ -24,7 +24,9 @@ from .sistema import Sistema
 log = logging.getLogger(__name__)
 PERFILES = ("rendimiento", "equilibrado", "ahorro")
 BATERIA_BAJA = 30  # % por debajo del cual "auto" pasa a ahorro
-REPOSO_PPS = 20.0  # paquetes por segundo por debajo de los cuales la wifi puede reposar (equilibrado)
+REPOSO_PPS = 20.0  # paquetes por segundo por debajo de los cuales la wifi puede reposar
+DESPIERTA_PPS = {"equilibrado": 50.0, "ahorro": 200.0}  # por encima, el ahorro se apaga en el acto
+REPOSO_ANTES = 60.0  # segundos seguidos casi sin trafico antes de encender el ahorro
 SIN_TOPE = 120  # 30 dBm en cuartos de dBm: por encima del maximo del chip, no limita nada
 RANGOS_SAR = 4  # rangos de frecuencia que acepta rtw88 para SAR
 CADA_REVISION = 300.0
@@ -105,6 +107,7 @@ class Energia:
         self.revisado = -1e9
         self.muestra: tuple[float, int] | None = None
         self.tope: int | None = None  # dBm del tope por calor (None: sin tope)
+        self.quieto_desde: float | None = None  # desde cuando la interfaz esta casi sin trafico
 
     @resiste(valor(None))
     def vigilar(self) -> None:
@@ -123,13 +126,25 @@ class Energia:
 
     @resiste(valor(False))
     def quiere_ahorro(self, actual: str) -> bool:
-        if actual != "equilibrado":
-            return actual == "ahorro"
+        """Con histeresis: reposa tras 60 s casi sin trafico y despierta apenas el trafico sube (con mas
+        margen en "ahorro"). Asi el ahorro no se enciende y apaga en cada vuelta ni frena el trafico."""
+        if actual == "rendimiento":
+            self.quieto_desde = None
+            return False
         ahora, total = self.reloj(), paquetes(self.s, self.cfg)
         previa, self.muestra = self.muestra, (ahora, total) if total is not None else None
         if previa is None or total is None or ahora <= previa[0]:
             return bool(self.ahorro)
-        return (total - previa[1]) / (ahora - previa[0]) < REPOSO_PPS  # con trafico, despierta
+        pps = (total - previa[1]) / (ahora - previa[0])
+        if pps > DESPIERTA_PPS[actual]:
+            self.quieto_desde = None
+            return False
+        if pps >= REPOSO_PPS:
+            return bool(self.ahorro)  # zona intermedia: se queda como esta
+        self.quieto_desde = (
+            previa[0] if self.quieto_desde is None else self.quieto_desde
+        )  # quieto desde la muestra anterior
+        return bool(self.ahorro) or ahora - self.quieto_desde >= REPOSO_ANTES
 
     @resiste(valor(None))
     def ajustar_ahorro(self, quiere: bool) -> None:
@@ -144,6 +159,13 @@ class Energia:
                 self.perfil,
             )
         self.ahorro = quiere
+
+    @resiste(valor(None))
+    def radio_nueva(self) -> None:
+        """El chip se reinicio: el ahorro se vuelve a revisar y el tope por calor, si lo habia, a poner."""
+        self.ahorro, self.revisado = None, -1e9
+        if self.tope is not None:
+            poner_tope(self.s, self.cfg, self.tope)
 
     @resiste(valor(None))
     def vigilar_calor(self) -> None:

@@ -64,8 +64,12 @@ class VigiaBt:
             return
         self.ultimo = time.monotonic()
         if sondas.apagada_a_proposito(self.s, "bluetooth"):
-            self.sospecha = False  # apagado por el usuario: se respeta
-            return
+            if self.s.leer(bluetooth.marca_rfkill(self.cfg)) is None:
+                self.sospecha = False  # apagado por el usuario: se respeta
+                return
+            log.warning("el Bluetooth quedo bloqueado por una reparacion interrumpida: lo desbloqueo")
+            if self.s.correr(["rfkill", "unblock", "bluetooth"]).ok:
+                self.s.correr(["rm", "-f", bluetooth.marca_rfkill(self.cfg)])
         vivo = bluetooth.responde(self.s, self.cfg)
         if vivo is None:  # sin hcitool o sin bluetoothctl no se sabe: nunca se repara a ciegas
             log.warning("no se pudo medir el Bluetooth (falta hcitool o bluetoothctl)")

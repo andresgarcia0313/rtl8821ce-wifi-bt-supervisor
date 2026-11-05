@@ -7,8 +7,10 @@ de verdad, deja de latir y systemd reinicia el demonio; si falla seguido, entra 
 from __future__ import annotations
 
 import logging
+import os
 import signal
 import sys
+import threading
 
 from . import escucha_red, intentos, servicio
 from .config import Config
@@ -19,10 +21,25 @@ log = logging.getLogger(__name__)
 MAX_ERRORES = 20  # vueltas seguidas con excepcion antes de salir y dejar que systemd decida
 
 
+def escuchar_despertar(c: Controlador) -> None:
+    """SIGUSR1 (gancho de suspension) sin tocar candados dentro del manejador: el kernel escribe la senal en
+    un tubo (set_wakeup_fd) y un hilo aparte la lee y despierta al bucle."""
+    leer, escribir = os.pipe()
+    os.set_blocking(escribir, False)
+    signal.signal(signal.SIGUSR1, lambda _n, _f: None)
+    signal.set_wakeup_fd(escribir)
+
+    def hilo() -> None:
+        while os.read(leer, 1):
+            intentos.seguro("despertar", c.al_despertar, lambda: None)
+
+    threading.Thread(target=hilo, name="despertar", daemon=True).start()
+
+
 def bucle(c: Controlador) -> int:
     intentos.latido = lambda: servicio.notificar("WATCHDOG=1")
+    intentos.seguro("senal de despertar", lambda: escuchar_despertar(c), lambda: None)
     c.escucha.iniciar()
-    signal.signal(signal.SIGUSR1, lambda _n, _f: c.al_despertar())  # lo manda el gancho de suspension
     intentos.seguro("escucha de la wifi", c.escucha_red.iniciar, lambda: None)
     escucha_red.armar_umbral(c.s, c.cfg)
     servicio.notificar("READY=1")

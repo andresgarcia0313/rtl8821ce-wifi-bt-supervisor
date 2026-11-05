@@ -113,4 +113,8 @@ def cargar(ruta: str = RUTA) -> Config:
             log.warning("config: '%s' = %r fuera de tipo o de rango, ignorado", clave, valor)
             continue
         cambios[clave] = valor
-    return replace(base, **cambios)  # type: ignore[arg-type]
+    nueva = replace(base, **cambios)  # type: ignore[arg-type]
+    if nueva.temp_ok >= nueva.temp_max:  # sin margen, el tope de potencia se pondria y quitaria cada vuelta
+        log.warning("config: temp_ok debe ser menor que temp_max; uso %s y %s", base.temp_ok, base.temp_max)
+        nueva = replace(nueva, temp_ok=base.temp_ok, temp_max=base.temp_max)
+    return nueva

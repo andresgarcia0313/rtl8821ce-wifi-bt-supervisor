@@ -76,11 +76,20 @@ def encender(s: Sistema, cfg: Config) -> bool:
     return _volvio(s, cfg)
 
 
+@resiste(lambda cfg: "/var/lib/controlador-radio/bt-rfkill-propio")
+def marca_rfkill(cfg: Config) -> str:
+    """Archivo que dice "este bloqueo lo puso el controlador": si muere a mitad del paso, lo sabe luego."""
+    return f"{cfg.estado_dir}/bt-rfkill-propio"
+
+
 @resiste(valor(False))
 def rfkill(s: Sistema, cfg: Config) -> bool:
+    s.escribir(marca_rfkill(cfg), "1")
     s.correr(["rfkill", "block", "bluetooth"])
     s.dormir(2)
-    s.correr(["rfkill", "unblock", "bluetooth"])
+    desbloqueado = s.correr(["rfkill", "unblock", "bluetooth"]).ok
+    if desbloqueado:
+        s.correr(["rm", "-f", marca_rfkill(cfg)])
     return pausa(s, 2) and encender(s, cfg)
 
 

@@ -67,24 +67,60 @@ def test_con_cargador_rinde_al_maximo_sin_ahorro_y_con_bluetooth_rapido() -> Non
     assert s.ordeno("btmgmt", "-i", C.bt_hci, "fast-conn", "on")
 
 
-def test_en_bateria_equilibrado_reposa_sin_trafico_y_despierta_con_trafico() -> None:
+def test_en_bateria_equilibrado_reposa_tras_un_minuto_quieto_y_despierta_con_trafico() -> None:
     e, s, reloj, _ = nuevo()
     s.archivos["/sys/class/power_supply/AC/online"] = "0\n"
     e.vigilar()
-    reloj.t += 10
-    s.trafico(50)  # 5 paquetes por segundo: casi sin uso
+    assert s.ordeno("btmgmt", "-i", C.bt_hci, "fast-conn", "off")
+    for _ in range(5):  # 50 s con 5 paquetes por segundo: aun no reposa
+        reloj.t += 10
+        s.trafico(50)
+        e.vigilar()
+    assert s.ahorro == "off"
+    reloj.t += 20
+    s.trafico(100)
     e.vigilar()
-    assert s.ahorro == "on" and s.ordeno("btmgmt", "-i", C.bt_hci, "fast-conn", "off")
+    assert s.ahorro == "on"  # un minuto casi sin trafico
     reloj.t += 10
-    s.trafico(5000)  # 500 por segundo: hay uso, la tarjeta no debe reposar
+    s.trafico(300)  # 30 por segundo: zona intermedia, no cambia
+    e.vigilar()
+    assert s.ahorro == "on"
+    reloj.t += 10
+    s.trafico(5000)  # 500 por segundo: despierta en el acto
     e.vigilar()
     assert s.ahorro == "off"
 
 
+def test_el_perfil_ahorro_tambien_despierta_con_mucho_trafico() -> None:
+    e, s, reloj, _ = nuevo(perfil_energia="ahorro")
+    e.vigilar()
+    reloj.t += 60
+    s.trafico(600)
+    e.vigilar()
+    reloj.t += 10
+    s.trafico(10)
+    e.vigilar()
+    assert s.ahorro == "on"
+    reloj.t += 10
+    s.trafico(5000)
+    e.vigilar()
+    assert s.ahorro == "off"
+
+
+def test_radio_nueva_vuelve_a_poner_el_tope_por_calor() -> None:
+    e, s, _, _ = nuevo()
+    s.archivos["/sys/class/hwmon/hwmon0/temp1_input"] = "95000\n"
+    e.vigilar()
+    e.radio_nueva()
+    assert len(s.topes) == 2 and e.ahorro is None
+
+
 def test_bateria_baja_pasa_a_ahorro() -> None:
-    e, s, _, notas = nuevo()
+    e, s, reloj, notas = nuevo()
     s.archivos["/sys/class/power_supply/AC/online"] = "0\n"
     s.archivos["/sys/class/power_supply/BAT0/capacity"] = "12\n"
+    e.vigilar()
+    reloj.t += 70
     e.vigilar()
     assert s.ahorro == "on" and e.perfil == "ahorro"
     s.archivos["/sys/class/power_supply/AC/online"] = "1\n"
@@ -93,8 +129,10 @@ def test_bateria_baja_pasa_a_ahorro() -> None:
 
 
 def test_perfil_fijo_de_la_configuracion_manda() -> None:
-    e, s, _, _ = nuevo(perfil_energia="ahorro")
+    e, s, reloj, _ = nuevo(perfil_energia="ahorro")
     e.vigilar()
+    reloj.t += 70
+    e.vigilar()  # sin trafico durante mas de un minuto
     assert s.ahorro == "on"
 
 

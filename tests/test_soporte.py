@@ -97,3 +97,12 @@ def test_cli_sin_argumentos_completos_muestra_la_ayuda(capsys: pytest.CaptureFix
 
     assert main(["probar"]) == 2 and main(["probar", "borrar-todo"]) == 2
     assert "controlador-radio" in capsys.readouterr().err
+
+
+def test_temp_ok_debe_ser_menor_que_temp_max(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from radio_rtw88.config import Config, cargar
+
+    ruta = tmp_path / "c.toml"
+    ruta.write_text("temp_max = 80.0\ntemp_ok = 85.0\n")
+    c = cargar(str(ruta))
+    assert (c.temp_ok, c.temp_max) == (Config().temp_ok, Config().temp_max)

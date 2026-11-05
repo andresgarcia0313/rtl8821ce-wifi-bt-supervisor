@@ -114,6 +114,8 @@ class Banda:
         if self.reloj() - self.baja_desde < SOSTENIDO:
             return False
         ssid_2g = self.p.nm("-g", "802-11-wireless.ssid", "connection", "show", self.cfg.conexion_2g)
+        if ssid_2g:
+            self.p.visible(ssid_2g)  # escaneo fresco: decidir con datos de ahora, no viejos
         otra = senal_en_escaneo(self.s, self.cfg, ssid_2g) if ssid_2g else None
         if otra is None or otra - senal < VENTAJA_2G:
             return False  # 2,4 GHz no se ve o no gana lo suficiente: se queda en 5 GHz
