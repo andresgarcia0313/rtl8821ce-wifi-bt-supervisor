@@ -119,3 +119,11 @@ def test_avisa_al_bluetooth_solo_cuando_cambia_el_canal(caso) -> None:
         b.convivencia(2437)
     b.convivencia(5745)
     assert len(s.mapas) == 2 and s.mapas[-1] == banda.TODOS_LIBRES
+
+
+def test_sin_ventaja_de_2_4_ghz_no_escanea_en_cada_vuelta(caso) -> None:
+    b, s, reloj, _ = caso
+    s.senal = {"casa": -80, "casa2": -78}
+    correr(b, reloj, medida(-80, 5745), 600)
+    escaneos = [o for o in s.ordenes if "--rescan" in o]
+    assert 1 <= len(escaneos) <= 600 / banda.CADA_BUSQUEDA + 1

@@ -111,8 +111,9 @@ class Banda:
             self.baja_desde = None
             return False
         self.baja_desde = self.reloj() if self.baja_desde is None else self.baja_desde
-        if self.reloj() - self.baja_desde < SOSTENIDO:
+        if self.reloj() - self.baja_desde < SOSTENIDO or self.reloj() - self.ultima_busqueda < CADA_BUSQUEDA:
             return False
+        self.ultima_busqueda = self.reloj()  # un escaneo cada CADA_BUSQUEDA: escanear corta el enlace
         ssid_2g = self.p.nm("-g", "802-11-wireless.ssid", "connection", "show", self.cfg.conexion_2g)
         if ssid_2g:
             self.p.visible(ssid_2g)  # escaneo fresco: decidir con datos de ahora, no viejos

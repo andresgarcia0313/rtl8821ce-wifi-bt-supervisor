@@ -157,3 +157,20 @@ def test_en_modo_observar_no_toca_nada() -> None:
     s.ahorro = "on"
     e.vigilar()
     assert s.ahorro == "on" and not s.ordeno("btmgmt")
+
+
+def test_la_quietud_se_cuenta_de_nuevo_tras_trafico_intermedio() -> None:
+    e, s, reloj, _ = nuevo()
+    s.archivos["/sys/class/power_supply/AC/online"] = "0\n"
+    e.vigilar()
+    reloj.t += 10
+    s.trafico(10)  # quieto
+    e.vigilar()
+    for _ in range(60):  # 10 min con trafico intermedio (30 por segundo)
+        reloj.t += 10
+        s.trafico(300)
+        e.vigilar()
+    reloj.t += 10
+    s.trafico(10)  # vuelve a estar quieto: aun no pasan 60 s seguidos
+    e.vigilar()
+    assert s.ahorro == "off"

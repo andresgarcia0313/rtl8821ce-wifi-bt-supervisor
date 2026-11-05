@@ -5,7 +5,7 @@ diagnostico        mide cada capa y dice la causa, sin tocar nada
 avisar-caida       aviso critico de que systemd dejo de reiniciar el demonio (OnFailure); suelta el
                    punto de acceso fijado
 soltar-bssid       quita el punto de acceso fijado en el perfil (lo usa restaurar.sh)
-restablecer-radio  deja la radio como la deja el driver: sin ahorro, sin RTS, sin tope, Bluetooth normal
+restablecer-radio  deja la radio como la deja el driver: sin ahorro, sin RTS, sin tope, AFH libre
 ajustes            opciones del driver al estilo Windows y su valor actual
 estado             contadores acumulados, ultima medida y estado del Bluetooth
 bitacora [n]       ultimos n eventos en frases sencillas
@@ -91,7 +91,6 @@ def _mantenimiento(orden: str, args: list[str], s: SistemaReal, cfg: Config) -> 
             energia.poner_ahorro(s, cfg, False),
             canal.poner_rts(s, cfg, False),
             energia.poner_tope(s, cfg, None),
-            energia.conexion_rapida_bt(s, cfg, True),
             banda.avisar_canal_al_bluetooth(s, cfg, None),
         ]
         return 0 if all(pasos) else 1

@@ -140,6 +140,7 @@ class Energia:
             self.quieto_desde = None
             return False
         if pps >= REPOSO_PPS:
+            self.quieto_desde = None  # la quietud debe ser seguida: se vuelve a contar
             return bool(self.ahorro)  # zona intermedia: se queda como esta
         self.quieto_desde = (
             previa[0] if self.quieto_desde is None else self.quieto_desde
